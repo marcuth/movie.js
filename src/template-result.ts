@@ -1,27 +1,15 @@
 import ffmpeg from "fluent-ffmpeg"
 
-export type ToStreamOptions = {
-    format?: string
-}
-
-export type ToFileOptions = {
-    format?: string
-}
-
-export type ToBufferOptions = {
-    format?: string
-}
-
 export class TemplateResult {
-    constructor(private readonly command: ffmpeg.FfmpegCommand) { }
+    constructor(private readonly format: string, private readonly command: ffmpeg.FfmpegCommand) { }
 
-    toStream({ format = "mp4" }: ToStreamOptions = {}) {
-        return this.command.format(format).pipe()
+    toStream() {
+        return this.command.format(this.format).pipe()
     }
 
-    async toBuffer({ format = "mp4" }: ToBufferOptions = {}): Promise<Buffer> {
+    async toBuffer(): Promise<Buffer> {
         const chunks: Buffer[] = []
-        const stream = this.toStream({ format: format })
+        const stream = this.toStream()
 
         return new Promise((resolve, reject) => {
             stream.on("data", chunk => chunks.push(chunk))
@@ -30,10 +18,10 @@ export class TemplateResult {
         })
     }
 
-    async toFile(filePath: string, { format = "mp4" }: ToFileOptions = {}): Promise<void> {
+    async toFile(filePath: string): Promise<void> {
         return new Promise((resolve, reject) => {
             this.command
-                .format(format)
+                .format(this.format)
                 .save(filePath)
                 .on("end", () => resolve())
                 .on("error", reject)

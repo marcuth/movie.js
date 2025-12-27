@@ -55,7 +55,7 @@ export class ImageClip extends Clip<ImageClipOptions> {
     get inputOptions(): string[] {
         return [
             "-loop 1",
-            `-t ${this.duration}`
+            `-t ${this.options.duration}`
         ]
     }
 }

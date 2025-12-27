@@ -3,13 +3,13 @@ import ffmpeg from "fluent-ffmpeg"
 import { AudioClip, Clip, ImageClip, TextClip, VideoClip } from "./clips"
 import { TemplateResult } from "./template-result"
 
-export type TemplateOptions<RenderData> = {
-    clips: Clip<any, RenderData>[]
+export type TemplateOptions = {
+    clips: Clip<any>[]
     format: string
 }
 
 export class Template<RenderData> {
-    constructor(private readonly options: TemplateOptions<RenderData>) { }
+    constructor(private readonly options: TemplateOptions) { }
 
     async render(data: RenderData) {
         const command = ffmpeg()
@@ -128,6 +128,6 @@ export class Template<RenderData> {
                 "-map [aout]"
             ])
 
-        return new TemplateResult(command)
+        return new TemplateResult(this.options.format, command)
     }
 }
