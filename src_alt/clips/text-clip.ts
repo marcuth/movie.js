@@ -8,8 +8,8 @@ export type TextClipFontOptions = {
 
 export type TextClipOptions = {
     text: string
-    x: number | string
-    y: number | string
+    x: number
+    y: number
     duration: number
     font: TextClipFontOptions
     fadeIn?: number
@@ -18,12 +18,14 @@ export type TextClipOptions = {
 
 export class TextClip extends Clip {
     readonly text: string
-    readonly x: number | string
-    readonly y: number | string
+    readonly x: number
+    readonly y: number
     readonly duration: number
     readonly font: TextClipFontOptions
     readonly fadeIn?: number
     readonly fadeOut?: number
+    readonly videoFilters: string[] = []
+    readonly audioFilters: string[] = []
 
     constructor({
         text,
@@ -43,13 +45,5 @@ export class TextClip extends Clip {
         this.font = font
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
-    }
-
-    get audioFilters(): string[] {
-        return []
-    }
-
-    get videoFilters(): string[] {
-        return []
     }
 }

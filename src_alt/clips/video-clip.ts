@@ -2,8 +2,8 @@ import { Clip } from "./clip"
 
 export type VideoClipOptions = {
     path: string
-    x: number | string
-    y: number | string
+    x: number
+    y: number
     subClip?: [number, number]
     width?: number // para redimensionar o vídeo
     height?: number // para redimensionar o vídeo
@@ -13,13 +13,15 @@ export type VideoClipOptions = {
 
 export class VideoClip extends Clip {
     readonly path: string
-    readonly x: number | string
-    readonly y: number | string
+    readonly x: number
+    readonly y: number
     readonly subClip?: [number, number]
     readonly width?: number
     readonly height?: number
     readonly fadeIn?: number
     readonly fadeOut?: number
+    readonly videoFilters: string[] = []
+    readonly audioFilters: string[] = []
 
     constructor({
         path,
@@ -37,13 +39,5 @@ export class VideoClip extends Clip {
         this.subClip = subClip
         this.width = width
         this.height = height
-    }
-
-    get audioFilters(): string[] {
-        return []
-    }
-
-    get videoFilters(): string[] {
-        return []
     }
 }

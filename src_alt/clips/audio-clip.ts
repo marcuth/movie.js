@@ -16,6 +16,8 @@ export class AudioClip extends Clip {
     readonly subClip?: [number, number]
     readonly fadeIn?: number
     readonly fadeOut?: number
+    readonly videoFilters: string[] = []
+    readonly audioFilters: string[] = []
 
     constructor({
         path,
@@ -33,13 +35,5 @@ export class AudioClip extends Clip {
         this.subClip = subClip
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
-    }
-
-    get audioFilters(): string[] {
-        return []
-    }
-
-    get videoFilters(): string[] {
-        return []
     }
 }
