@@ -1,24 +1,42 @@
-import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, TextClip, TextClipOptions, VideoClip, VideoClipOptions } from "./clips"
-import { TemplateOptions, Template } from "./template"
+import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, TextClip, TextClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, GridClip, GridClipOptions, RectangleClip, RectangleClipOptions, RepeatClip, RepeatClipOptions, VideoClip, GroupClip, GroupClipOptions } from "./clips"
+import { Template, TemplateOptions } from "./template"
 
-export * from "./clips"
-export * from "./template"
-export * from "./template-result"
-
-export const pellicula = {
-    template<RenderData>(options: TemplateOptions) {
+export const movie = {
+    // template
+    template<RenderData>(options: TemplateOptions<RenderData>) {
         return new Template<RenderData>(options)
     },
-    text(options: TextClipOptions) {
-        return new TextClip(options)
+
+    // clipes básicos
+    audio<RenderData>(options: AudioClipOptions) {
+        return new AudioClip<RenderData>(options)
     },
-    image(options: ImageClipOptions) {
-        return new ImageClip(options)
+    image<RenderData>(options: ImageClipOptions<RenderData>) {
+        return new ImageClip<RenderData>(options)
     },
-    video(options: VideoClipOptions) {
-        return new VideoClip(options)
+    text<RenderData>(options: TextClipOptions<RenderData>) {
+        return new TextClip<RenderData>(options)
     },
-    audio(options: AudioClipOptions) {
-        return new AudioClip(options)
-    }
+    video<RenderData>(options: VideoClipOptions<RenderData>) {
+        return new VideoClip<RenderData>(options)
+    },
+    composition<RenderData>(options: CompositionClipOptions<RenderData>) {
+        return new CompositionClip<RenderData>(options)
+    },
+
+    // clipes básicos (opcionais)
+    rectangle<RenderData>(options: RectangleClipOptions<RenderData>) {
+        return new RectangleClip<RenderData>(options)
+    },
+    grid<RenderData>(options: GridClipOptions<RenderData>) {
+        return new GridClip<RenderData>(options)
+    },
+
+    // clipes "helpers" sem efeitos reais visíveis, apenas wrappers
+    group<RenderData>(options: GroupClipOptions<RenderData>) {
+        return new GroupClip<RenderData>(options)
+    }, // para oganizar os cliples na declaração
+    repeat<RenderData, Item>(options: RepeatClipOptions<RenderData, Item>) {
+        return new RepeatClip<RenderData, Item>(options)
+    }, // para lidar com loops e for each
 }

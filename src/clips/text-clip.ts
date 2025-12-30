@@ -1,49 +1,103 @@
+import { Axis, resolveAxis } from "../utils/resolve-axis"
 import { Clip } from "./clip"
 
-export type TextClipOptions = {
-    text: string
-    duration: number
-    x: number | string
-    y: number | string
-    font: {
-        filePath?: string
-        size: number
-        color: string
-    }
+export type TextClipFontOptions = {
+    size: number
+    color: string
+    filePath?: string
 }
 
-export class TextClip extends Clip<TextClipOptions> {
-    getVideoFilters(): string[] {
-        const {
-            x = "(w-text_w)/2",
-            y = "(h-text_h)/2",
-            duration,
-            font,
-            text
-        } = this.options
+export type TextClipOptions<RenderData> = {
+    text: string
+    x: Axis<RenderData>
+    y: Axis<RenderData>
+    duration: number
+    font: TextClipFontOptions
+    fadeIn?: number
+    fadeOut?: number
+}
 
-        const escapedText = text
+export class TextClip<RenderData> extends Clip<RenderData> {
+    readonly text: string
+    readonly x: Axis<RenderData>
+    readonly y: Axis<RenderData>
+    readonly duration: number
+    readonly font: TextClipFontOptions
+    readonly fadeIn?: number
+    readonly fadeOut?: number
+    readonly videoFilters: string[] = []
+    readonly audioFilters: string[] = []
+
+    constructor({
+        text,
+        x,
+        y,
+        duration,
+        font,
+        fadeIn,
+        fadeOut
+    }: TextClipOptions<RenderData>) {
+        super()
+
+        this.text = text
+        this.x = x
+        this.y = y
+        this.duration = duration
+        this.font = font
+        this.fadeIn = fadeIn
+        this.fadeOut = fadeOut
+    }
+
+    getFilters(inputIndex: number, data: RenderData): string[] {
+        const filters: string[] = []
+
+        const inStream = `[base${inputIndex}]`
+        const outStream = `[text${inputIndex}]`
+
+        const x = resolveAxis({ axis: this.x, data, index: inputIndex })
+        const y = resolveAxis({ axis: this.y, data, index: inputIndex })
+
+        const {
+            size,
+            color,
+            filePath
+        } = this.font
+
+        const safeText = this.text
             .replace(/:/g, "\\:")
             .replace(/'/g, "\\'")
             .replace(/\n/g, "\\n")
 
-        const drawtextParts = [
-            `text='${escapedText}'`,
-            `fontsize=${font.size}`,
-            `fontcolor=${font.color}`,
+        const drawTextParts = [
+            `text='${safeText}'`,
             `x=${x}`,
             `y=${y}`,
-            `enable='between(t,0,${duration})'`
+            `fontsize=${size}`,
+            `fontcolor=${color}`,
+            `enable='between(t,0,${this.duration})'`
         ]
 
-        if (font.filePath) {
-            drawtextParts.push(`fontfile=${font.filePath}`)
+        if (filePath) {
+            drawTextParts.push(`fontfile='${filePath}'`)
         }
 
-        return [`drawtext=${drawtextParts.join(":")}`]
-    }
+        filters.push(
+            `${inStream}drawtext=${drawTextParts.join(":")}${outStream}`
+        )
 
-    getAudioFilters(): string[] {
-        return []
+        if (this.fadeIn) {
+            filters.push(
+                `${outStream}fade=t=in:st=0:d=${this.fadeIn}:alpha=1${outStream}`
+            )
+        }
+
+        if (this.fadeOut) {
+            const start = this.duration - this.fadeOut
+            filters.push(
+                `${outStream}fade=t=out:st=${start}:d=${this.fadeOut}:alpha=1${outStream}`
+            )
+        }
+
+        return filters
     }
 }
