@@ -1,12 +1,14 @@
 import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, TextClip, TextClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, GridClip, GridClipOptions, RectangleClip, RectangleClipOptions, RepeatClip, RepeatClipOptions, VideoClip, GroupClip, GroupClipOptions } from "./clips"
 import { Template, TemplateOptions } from "./template"
 
-export const movie = {
+export * from "./clips"
+export * from "./template"
+
+const movie = {
     // template
     template<RenderData>(options: TemplateOptions<RenderData>) {
         return new Template<RenderData>(options)
     },
-
     // clipes básicos
     audio<RenderData>(options: AudioClipOptions) {
         return new AudioClip<RenderData>(options)
@@ -40,3 +42,5 @@ export const movie = {
         return new RepeatClip<RenderData, Item>(options)
     }, // para lidar com loops e for each
 }
+
+export default movie

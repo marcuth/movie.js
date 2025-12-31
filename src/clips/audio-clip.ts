@@ -1,3 +1,5 @@
+import { FFmpegInput } from "../ffmpeg-input"
+import { RenderContext } from "../render-context"
 import { Clip } from "./clip"
 
 export type AudioClipOptions = {
@@ -37,7 +39,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         this.fadeOut = fadeOut
     }
 
-    getInputs(inputIndex: number) {
+    protected getInputs(inputIndex: number): FFmpegInput[] {
         const inputOptions: string[] = []
 
         if (this.loop) {
@@ -55,46 +57,13 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
                 path: this.path,
                 alias: `[a${inputIndex}:a]`,
                 type: "audio",
-                options: inputOptions
+                options: inputOptions,
+                index: inputIndex
             }
         ]
     }
 
-    getFilters(inputIndex: number): string[] {
-        const filters: string[] = []
+    build(data: RenderData, context: RenderContext): void {
 
-        const inStream = `[a${inputIndex}:a]`
-        const outStream = `[audio${inputIndex}]`
-
-        let current = inStream
-
-        if (this.volume !== undefined) {
-            filters.push(
-                `${current}volume=${this.volume}${outStream}`
-            )
-            current = outStream
-        }
-
-        if (this.fadeIn) {
-            filters.push(
-                `${current}afade=t=in:st=0:d=${this.fadeIn}${outStream}`
-            )
-            current = outStream
-        }
-
-        if (this.fadeOut) {
-            filters.push(
-                `${current}afade=t=out:st=${this.fadeOut}:d=${this.fadeOut}${outStream}`
-            )
-            current = outStream
-        }
-
-        if (filters.length === 0) {
-            filters.push(
-                `${inStream}anull${outStream}`
-            )
-        }
-
-        return filters
     }
 }

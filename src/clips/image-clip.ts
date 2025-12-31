@@ -1,10 +1,12 @@
-import { Axis, resolveAxis } from "../utils/resolve-axis"
+import { FFmpegInput } from "../ffmpeg-input"
+import { RenderContext } from "../render-context"
+import { Axis } from "../utils/resolve-axis"
 import { Clip } from "./clip"
 
 export type ImageClipOptions<RenderData> = {
     path: string
-    x: Axis<RenderData>
-    y: Axis<RenderData>
+    x?: Axis<RenderData>
+    y?: Axis<RenderData>
     width?: number
     height?: number
     duration: number
@@ -13,16 +15,14 @@ export type ImageClipOptions<RenderData> = {
 }
 
 export class ImageClip<RenderData> extends Clip<RenderData> {
-    readonly x: Axis<RenderData>
-    readonly y: Axis<RenderData>
+    readonly x?: Axis<RenderData>
+    readonly y?: Axis<RenderData>
     readonly duration: number
     readonly path: string
     readonly fadeIn?: number
     readonly fadeOut?: number
     readonly width?: number
     readonly height?: number
-    readonly videoFilters: string[] = []
-    readonly audioFilters: string[] = []
 
     constructor({
         x,
@@ -35,7 +35,6 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         fadeOut
     }: ImageClipOptions<RenderData>) {
         super()
-
         this.x = x
         this.y = y
         this.duration = duration
@@ -46,55 +45,79 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.height = height
     }
 
-    getInputs(inputIndex: number) {
-        return [
-            {
-                path: this.path,
-                alias: `[i${inputIndex}:v]`,
-                type: "image",
-                options: ["-loop 1"]
-            }
-        ]
+    protected getInput(inputIndex: number, fps: number): FFmpegInput {
+        return {
+            path: this.path,
+            index: Number(inputIndex),
+            alias: `[${inputIndex}:v]`,
+            type: "image" as const,
+            options: [
+                "-loop 1",
+                `-t ${this.duration}`,
+                `-framerate ${fps}`
+            ]
+        }
+
     }
 
-    getFilters(inputIndex: number, data: RenderData): string[] {
-        const filters: string[] = []
+    build(data: RenderData, context: RenderContext): void {
+        const input = this.getInput(context.inputIndex, context.fps)
+        const inputAlias = input.alias
+        let currentOutput = inputAlias
 
-        const imageIn = `[i${inputIndex}:v]`
-        const imageStream = `[img${inputIndex}]`
-        const baseStream = `[base${inputIndex}]`
-        const outStream = `[layer${inputIndex}]`
+        context.command
+            .input(input.path)
+            .inputOptions(input.options!)
 
-        if (this.width || this.height) {
-            filters.push(
-                `${imageIn}scale=${this.width ?? -1}:${this.height ?? -1}${imageStream}`
-            )
-        } else {
-            filters.push(
-                `${imageIn}null${imageStream}`
-            )
+        if (this.width !== undefined || this.height !== undefined) {
+            const scaleOutput = `scale${context.inputIndex}`
+
+            context.filters.push({
+                filter: "scale",
+                options: { w: this.width ?? -1, h: this.height ?? -1 },
+                inputs: currentOutput,
+                outputs: scaleOutput,
+            })
+
+            currentOutput = scaleOutput
         }
 
-        if (this.fadeIn) {
-            filters.push(
-                `${imageStream}fade=t=in:st=0:d=${this.fadeIn}:alpha=1${imageStream}`
-            )
+        if (this.fadeIn && this.fadeIn > 0) {
+            const fadeInOutput = `fadeIn${context.inputIndex}`
+
+            context.filters.push({
+                filter: "fade",
+                options: { t: "in", st: 0, d: this.fadeIn },
+                inputs: currentOutput,
+                outputs: fadeInOutput
+            })
+
+            currentOutput = fadeInOutput
         }
 
-        if (this.fadeOut) {
-            const start = this.duration - this.fadeOut
-            filters.push(
-                `${imageStream}fade=t=out:st=${start}:d=${this.fadeOut}:alpha=1${imageStream}`
-            )
+        if (this.fadeOut && this.fadeOut > 0) {
+            const start = Math.max(this.duration - this.fadeOut, 0)
+            const fadeOutOutput = `[v${context.inputIndex}]`
+
+            context.filters.push({
+                filter: "fade",
+                options: { t: "out", st: start, d: this.fadeOut },
+                inputs: currentOutput,
+                outputs: fadeOutOutput
+            })
+
+            currentOutput = fadeOutOutput
         }
 
-        const x = resolveAxis({ axis: this.x, data, index: inputIndex })
-        const y = resolveAxis({ axis: this.y, data, index: inputIndex })
+        if (!this.fadeOut || this.fadeOut <= 0) {
+            context.filters.push({
+                filter: "null",
+                inputs: currentOutput,
+                outputs: `[v${context.inputIndex}]`
+            })
+        }
 
-        filters.push(
-            `${baseStream}${imageStream}overlay=${x}:${y}:enable='between(t,0,${this.duration})'${outStream}`
-        )
-
-        return filters
+        context.labels.push(`[v${context.inputIndex}]`)
+        context.inputIndex++
     }
 }

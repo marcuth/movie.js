@@ -1,4 +1,5 @@
-import { FFmpegFilterSpec } from "../ffmpeg-filter-spec"
+import { FFmpegInput } from "../ffmpeg-input"
+import { RenderContext } from "../render-context"
 import { Axis } from "../utils/resolve-axis"
 import { Clip } from "./clip"
 
@@ -6,79 +7,76 @@ export type VideoClipOptions<RenderData> = {
     path: string
     x: Axis<RenderData>
     y: Axis<RenderData>
-    subClip?: [number, number]
-    width?: number // para redimensionar o vídeo
-    height?: number // para redimensionar o vídeo
     fadeIn?: number
     fadeOut?: number
 }
 
 export class VideoClip<RenderData> extends Clip<RenderData> {
-    readonly path: string
     readonly x: Axis<RenderData>
     readonly y: Axis<RenderData>
-    readonly subClip?: [number, number]
-    readonly width?: number
-    readonly height?: number
+    readonly path: string
     readonly fadeIn?: number
     readonly fadeOut?: number
-    readonly videoFilters: string[] = []
-    readonly audioFilters: string[] = []
 
-    constructor({
-        path,
-        x,
-        y,
-        subClip,
-        width,
-        height,
-        fadeIn,
-        fadeOut
-    }: VideoClipOptions<RenderData>) {
+    constructor({ path, x, y, fadeIn, fadeOut }: VideoClipOptions<RenderData>) {
         super()
-
         this.path = path
         this.x = x
         this.y = y
-        this.subClip = subClip
-        this.width = width
-        this.height = height
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
     }
 
-    getInputs(inputIndex: number) {
-        return [{ path: this.path, alias: `[v${inputIndex}:v]`, type: "video" }]
+    protected getInputs(inputIndex: number): FFmpegInput {
+        return {
+            path: this.path,
+            alias: `[${inputIndex}:v]`,
+            type: "video",
+            index: inputIndex,
+        }
     }
 
-    getFilters(inputIndex: number, data: RenderData): string[] {
-        const filters: string[] = []
+    build(data: RenderData, context: RenderContext): void {
+        const input = this.getInputs(context.inputIndex)
+        const inputAlias = input.alias
+        let currentOutput = inputAlias
 
-        const inStream = `[v${inputIndex}:v]`
-        const outStream = `[video${inputIndex}]`
+        context.command
+            .input(input.path)
 
-        if (this.width || this.height) {
-            filters.push(
-                `${inStream}scale=${this.width ?? -1}:${this.height ?? -1}${outStream}`
-            )
+        if (this.fadeIn !== undefined && this.fadeIn > 0) {
+            const fadeInOutput = `fadeIn${context.inputIndex}`
+
+            context.filters.push({
+                filter: "fade",
+                options: { t: "in", st: 0, d: this.fadeIn },
+                inputs: currentOutput,
+                outputs: fadeInOutput
+            })
+
+            currentOutput = fadeInOutput
+        }
+
+        if (this.fadeOut !== undefined && this.fadeOut > 0) {
+            const fadeOutOutput = `[v${context.inputIndex}]`
+
+            context.filters.push({
+                filter: "fade",
+                options: { t: "out", st: `0`, d: this.fadeOut },
+                inputs: currentOutput,
+                outputs: fadeOutOutput
+            })
+
+            currentOutput = fadeOutOutput
         } else {
-            filters.push(
-                `${inStream}null${outStream}`
-            )
+            context.filters.push({
+                filter: "null",
+                inputs: currentOutput,
+                outputs: `[v${context.inputIndex}]`
+            })
         }
 
-        if (this.fadeIn) {
-            filters.push(
-                `${outStream}fade=t=in:st=0:d=${this.fadeIn}${outStream}`
-            )
-        }
-
-        if (this.fadeOut) {
-            filters.push(
-                `${outStream}fade=t=out:st=${this.fadeOut}:d=${this.fadeOut}${outStream}`
-            )
-        }
-
-        return filters
+        context.labels.push(`[v${context.inputIndex}]`)
+        context.inputIndex++
     }
 }

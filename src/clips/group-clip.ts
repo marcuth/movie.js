@@ -21,29 +21,13 @@ export class GroupClip<RenderData> extends Clip<RenderData> {
         this.clips = options.clips
     }
 
-    getFilters(
-        inputIndex: number,
-        data: RenderData,
-        context: RenderContext
-    ): string[] {
-        const filters: string[] = []
-
-        const dx = resolveAxis({ axis: this.x, data, index: inputIndex })
-        const dy = resolveAxis({ axis: this.y, data, index: inputIndex })
-
-        const nextContext = {
-            offsetX: context.offsetX + dx,
-            offsetY: context.offsetY + dy
-        }
-
-        let childIndex = inputIndex
-
+    build(data: RenderData, context: RenderContext): void {
         for (const clip of this.clips) {
-            const clipFilters = clip.getFilters(childIndex, data, nextContext)
-            filters.push(...clipFilters)
-            childIndex++
-        }
+            if (!clip.shouldRender(data, 0)) {
+                continue
+            }
 
-        return filters
+            clip.build(data, context)
+        }
     }
 }

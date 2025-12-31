@@ -1,3 +1,4 @@
+import { FFmpegInput } from "../ffmpeg-input"
 import { RenderContext } from "../render-context"
 
 export type WhenOptions<Data> = {
@@ -17,11 +18,9 @@ export abstract class Clip<RenderData> {
         return this.when ? this.when({ data, index }) : true
     }
 
-    getFilters(inputIndex: number, data: RenderData, context: RenderContext): string[] {
-        return []
-    }
-
-    getInputs(inputIndex: number) {
+    protected getInput(inputIndex: number, fps?: number): FFmpegInput {
         throw new Error("Method not implemented.")
     }
+
+    abstract build(data: RenderData, context: RenderContext): void
 }

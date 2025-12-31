@@ -1,80 +1,92 @@
+import cliProgress from "cli-progress"
 import ffmpeg from "fluent-ffmpeg"
 
-import {
-    AudioClip,
-    Clip,
-    ImageClip,
-    VideoClip,
-} from "./clips"
-import { TemplateResult } from "./template-result"
+import { AudioClip, Clip, ImageClip, RepeatClip, VideoClip } from "./clips"
 import { RenderContext } from "./render-context"
+import { RenderResult } from "./render-result"
 
 export type TemplateOptions<RenderData> = {
     clips: Clip<RenderData>[]
-    format: string
+    config: {
+        format: string
+        fps: number
+        outputOptions?: string[]
+    }
+    debug?: boolean
 }
 
 export class Template<RenderData> {
-    constructor(private readonly options: TemplateOptions<RenderData>) {}
+    constructor(private readonly options: TemplateOptions<RenderData>) { }
 
     async render(data: RenderData) {
         const command = ffmpeg()
 
-        let inputIndex = 0
-        const filters: string[] = []
-
         const context: RenderContext = {
             offsetX: 0,
             offsetY: 0,
+            command: command,
+            fps: this.options.config.fps,
+            inputIndex: 0,
+            filters: [],
+            labels: []
         }
 
-        // 1️⃣ Registrar inputs (somente clips que realmente possuem mídia)
+        const progressBar = new cliProgress.SingleBar(
+            {
+                format: "Rendering |{bar}| {percentage}% | {value}/{total}",
+                barCompleteChar: "█",
+                barIncompleteChar: "░",
+                hideCursor: true,
+            },
+            cliProgress.Presets.shades_classic
+        )
+
+        let progressStarted = false
+
         for (const clip of this.options.clips) {
-            if (
-                clip instanceof ImageClip ||
-                clip instanceof VideoClip ||
-                clip instanceof AudioClip
-            ) {
-                if (!clip.shouldRender(data, 0)) continue
+            clip.build(data, context)
+        }
 
-                const inputs = clip.getInputs(inputIndex)
+        const stringLabels = context.labels.join("")
 
-                for (const input of inputs) {
-                    command.input(input.path)
+        const concatFilter =
+            `${stringLabels}concat=n=${context.labels.length}:v=1:a=0[outv]`
+
+        const filterComplex = [...context.filters, concatFilter]
+        command.complexFilter(filterComplex)
+
+        command.outputOptions([
+            "-map [outv]",
+            "-c:v libx264",
+            "-pix_fmt yuv420p",
+            ...(this.options.config.outputOptions ?? [])
+        ])
+
+        if (this.options.debug) {
+            command
+                .on("start", cmd => console.log("FFmpeg:", cmd))
+                .on("error", err => console.error("FFmpeg error:", err))
+        }
+
+        command
+            .on("progress", progress => {
+                if (progress.percent != null) {
+                    if (!progressStarted) {
+                        progressBar.start(100, 0)
+                        progressStarted = true
+                    }
+
+                    progressBar.update(Math.min(progress.percent, 100))
                 }
+            })
+            .on("end", () => {
+                if (progressStarted) {
+                    progressBar.update(100)
+                    progressBar.stop()
+                }
+            })
 
-                inputIndex += inputs.length
-            }
-        }
-
-        // 2️⃣ Gerar filtros (todos os clips, inclusive estruturais)
-        inputIndex = 0
-
-        for (const clip of this.options.clips) {
-            if (!clip.shouldRender(data, 0)) continue
-
-            const clipFilters = clip.getFilters(
-                inputIndex,
-                data,
-                context
-            )
-
-            filters.push(...clipFilters)
-
-            if (
-                clip instanceof ImageClip ||
-                clip instanceof VideoClip ||
-                clip instanceof AudioClip
-            ) {
-                const inputs = clip.getInputs(inputIndex)
-                inputIndex += inputs.length
-            }
-        }
-
-        if (filters.length > 0) {
-            command.complexFilter(filters)
-        }
-
-        return new TemplateResult(this.options.format, command)
+        return new RenderResult(this.options.config.format, command)
     }
+
 }

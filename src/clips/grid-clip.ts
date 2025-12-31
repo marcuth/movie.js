@@ -38,35 +38,7 @@ export class GridClip<RenderData> extends Clip<RenderData> {
         this.cols = cols
     }
 
-    getFilters(inputIndex: number, data: RenderData, context: RenderContext): string[] {
-        const filters: string[] = []
-
-        let currentBase = `[base${inputIndex}]`
-        let layerIndex = 0
-
-        for (let row = 0; row < this.rows; row++) {
-            for (let col = 0; col < this.cols; col++) {
-                const clip = this.clipMatrix[row][col]
-
-                // cada clip gera seus próprios filtros
-                const clipFilters = clip.getFilters(layerIndex, data, context)
-                filters.push(...clipFilters)
-
-                const clipStream = `[layer${layerIndex}]`
-                const outStream = `[grid${inputIndex}_${layerIndex}]`
-
-                const x = `(${col}*W/${this.cols})`
-                const y = `(${row}*H/${this.rows})`
-
-                filters.push(
-                    `${currentBase}${clipStream}overlay=${x}:${y}${outStream}`
-                )
-
-                currentBase = outStream
-                layerIndex++
-            }
-        }
-
-        return filters
+    build(data: RenderData, context: RenderContext): void {
+        
     }
 }

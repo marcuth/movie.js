@@ -18,22 +18,7 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
         this.clips = clips
     }
 
-    getFilters(inputIndex: number, data: RenderData, context: RenderContext): string[] {
-        const filters: string[] = []
-
-        let currentBase = `[base${inputIndex}]`
-        let layerIndex = 0
-
-        for (const clip of this.clips) {
-            const clipFilters = clip.getFilters(layerIndex, data, context)
-            filters.push(...clipFilters)
-
-            const clipOutput = `[layer${layerIndex}]`
-
-            currentBase = clipOutput
-            layerIndex++
-        }
-
-        return filters
+    build(data: RenderData, context: RenderContext): void {
+        
     }
 }
