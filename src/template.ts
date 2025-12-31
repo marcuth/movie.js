@@ -35,7 +35,7 @@ export class Template<RenderData> {
             },
         }
 
-        const estimatedTotalDuration = await this.runBuildWithProgress(data, context)
+        await this.runBuildWithProgress(data, context)
 
         const stringLabels = context.labels.video
             .map((videoLabel, index) => `${videoLabel}${context.labels.audio[index]}`)
@@ -44,7 +44,6 @@ export class Template<RenderData> {
         const concatFilter =
             `${stringLabels}concat=n=${context.labels.video.length}:v=1:a=1[outv][outa]`
 
-        /* 
         console.dir({
             stringLabels,
             concatFilter,
@@ -55,7 +54,17 @@ export class Template<RenderData> {
         }, {
             depth: null
         })
-        */
+
+        if (this.options.debug) {
+            command
+                .on("start", (commandLine) => {
+                    console.log("Spawned Ffmpeg with command: " + commandLine)
+                })
+                .on("error", (err, stdout, stderr) => {
+                    console.error("Error: " + err.message)
+                    console.error("ffmpeg stderr: " + stderr)
+                })
+        }
 
         const filterComplex = [...context.filters, concatFilter]
         command.complexFilter(filterComplex)
@@ -72,7 +81,7 @@ export class Template<RenderData> {
         return new RenderResult(this.options.config.format, command)
     }
 
-    private async runBuildWithProgress(data: RenderData, context: RenderContext): Promise<number> {
+    private async runBuildWithProgress(data: RenderData, context: RenderContext) {
         const buildBar = new cliProgress.SingleBar({ format: "Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
         buildBar.start(this.options.clips.length, 0)
 
@@ -83,8 +92,5 @@ export class Template<RenderData> {
         }
 
         buildBar.stop()
-
-        const estimatedTotalDuration = this.options.clips.reduce((sum, c: any) => sum + (typeof c.duration === "number" ? c.duration : 0), 0)
-        return estimatedTotalDuration
     }
 }

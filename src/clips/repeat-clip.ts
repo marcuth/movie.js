@@ -42,14 +42,14 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
         this.y = y
     }
 
-    build(data: RenderData, context: RenderContext): void {
+    async build(data: RenderData, context: RenderContext): Promise<void> {
         const items = this.each({ data: data, index: 0 })
         const length = items.length
 
         for (let i = 0; i < length; i++) {
             const item = items[i]
             const clip = this.clip(item, { index: i, length: length })
-            clip.build(data, context)
+            await clip.build(data, context)
         }
     }
 }

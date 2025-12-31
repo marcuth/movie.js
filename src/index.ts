@@ -37,10 +37,10 @@ const movie = {
     // clipes "helpers" sem efeitos reais visíveis, apenas wrappers
     group<RenderData>(options: GroupClipOptions<RenderData>) {
         return new GroupClip<RenderData>(options)
-    }, // para oganizar os cliples na declaração
+    },
     repeat<RenderData, Item>(options: RepeatClipOptions<RenderData, Item>) {
         return new RepeatClip<RenderData, Item>(options)
-    }, // para lidar com loops e for each
+    },
 }
 
 export default movie

@@ -26,23 +26,32 @@ async function main() {
                 fadeIn: .5,
                 fadeOut: .5,
             }),
-            movie.repeat({
-                each: () => dragonFiles,
-                clip: (file) => movie.image({
-                    path: file,
-                    duration: 5,
-                    fadeIn: 1,
-                    fadeOut: 1,
-                })
-            }),
-            movie.repeat({
-                each: () => lapFiles.slice(0, 1),
-                clip: (file) => movie.image({
-                    path: file,
-                    duration: 10,
-                    fadeIn: 1,
-                    fadeOut: 1,
-                })
+            movie.group({
+                clips: [
+                    movie.repeat({
+                        each: () => dragonFiles,
+                        clip: (file) => movie.image({
+                            path: file,
+                            duration: 5,
+                            fadeIn: 1,
+                            fadeOut: 1,
+                        })
+                    }),
+                    movie.repeat({
+                        each: () => lapFiles.slice(0, 1),
+                        clip: (file) => movie.image({
+                            path: file,
+                            duration: 10,
+                            fadeIn: 1,
+                            fadeOut: 1,
+                        })
+                    }),
+                    movie.audio({
+                        path: path.join(__dirname, "better_days.mp3"),
+                        startAt: 5,
+                        endAt: 5 + dragonFiles.length * 5 + lapFiles.slice(0, 1).length * 10,
+                    })
+                ],
             }),
             movie.video({
                 path: endOfVideoFilePath,
