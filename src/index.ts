@@ -1,4 +1,4 @@
-import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, TextClip, TextClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, GridClip, GridClipOptions, RectangleClip, RectangleClipOptions, RepeatClip, RepeatClipOptions, VideoClip, GroupClip, GroupClipOptions } from "./clips"
+import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, TextClip, TextClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, GridClip, GridClipOptions, RectangleClip, RectangleClipOptions, RepeatClip, RepeatClipOptions, VideoClip, GroupClip, GroupClipOptions, ConcatenationClip, ConcatenationClipOptions } from "./clips"
 import { Template, TemplateOptions } from "./template"
 
 export * from "./clips"
@@ -41,6 +41,9 @@ const movie = {
     repeat<RenderData, Item>(options: RepeatClipOptions<RenderData, Item>) {
         return new RepeatClip<RenderData, Item>(options)
     },
+    concatenation<RenderData>(options: ConcatenationClipOptions<RenderData>) {
+        return new ConcatenationClip<RenderData>(options)
+    }
 }
 
 export default movie

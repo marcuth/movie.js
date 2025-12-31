@@ -46,7 +46,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         this.endAt = endAt
     }
 
-    protected getInput(audioIndex: number): FFmpegInput {
+    protected getInput(inputIndex: number): FFmpegInput {
         const inputOptions: string[] = []
 
         if (this.loop) {
@@ -63,16 +63,16 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
             path: this.path,
             aliases: {
                 video: "",
-                audio: `[${audioIndex}:a]`
+                audio: `[${inputIndex}:a]`
             },
             type: "audio",
             options: inputOptions,
-            index: audioIndex
+            index: inputIndex
         }
     }
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
-        const input = this.getInput(context.audioIndex)
+        const input = this.getInput(context.inputIndex)
 
         context.command.input(input.path)
 
@@ -99,7 +99,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         let currentAudioOutput = input.aliases.audio
 
         if (duration > 0) {
-            const trimOutput = `[trimAudio${context.audioIndex}]`
+            const trimOutput = `[trimAudio${context.inputIndex}]`
             context.filters.push({
                 filter: "atrim",
                 options: { end: duration },
@@ -110,7 +110,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
 
         if (this.fadeIn && this.fadeIn > 0) {
-            const fadeInOutput = `[fadeInAudio${context.audioIndex}]`
+            const fadeInOutput = `[fadeInAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "afade",
@@ -124,7 +124,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
 
         if (this.fadeOut && this.fadeOut > 0) {
             const start = Math.max((duration || 0) - this.fadeOut, 0)
-            const fadeOutOutput = `[fadeOutAudio${context.audioIndex}]`
+            const fadeOutOutput = `[fadeOutAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "afade",
@@ -138,7 +138,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
 
 
         if (this.volume !== undefined) {
-            const volumeOutput = `[volAudio${context.audioIndex}]`
+            const volumeOutput = `[volAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "volume",
@@ -152,7 +152,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
 
         if (this.startAt && this.startAt > 0) {
             const delayMs = Math.floor(this.startAt * 1000)
-            const delayOutput = `[delayAudio${context.audioIndex}]`
+            const delayOutput = `[delayAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "adelay",
@@ -165,13 +165,13 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
 
         if (this.endAt && this.endAt > 0) {
-            const trimOutput = `[endTrimAudio${context.audioIndex}]`
+            const trimOutput = `[endTrimAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "atrim",
                 options: {
                     start: 0,
-                    end: this.endAt - (this.startAt ?? 0)
+                    end: this.endAt
                 },
                 inputs: currentAudioOutput,
                 outputs: trimOutput
@@ -180,8 +180,9 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
             currentAudioOutput = trimOutput
         }
 
-        context.labels.audio.push(currentAudioOutput)
+        context.labels.mixAudio.push(currentAudioOutput)
 
         context.audioIndex++
+        context.inputIndex++
     }
 }

@@ -34,7 +34,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
             path: this.path,
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[${audioIndex}:a]`
+                audio: `[${inputIndex}:a]`
             },
             type: "video",
             index: inputIndex,
@@ -43,13 +43,13 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
 
     async getDuration(): Promise<number> {
         return await new Promise<number>((resolve, reject) => {
-                ffprobe(this.path, (error, data) => {
-                    if (error) {
-                        reject(error)
-                    }
-                    
-                    resolve(data.format.duration || 0)
-                })
+            ffprobe(this.path, (error, data) => {
+                if (error) {
+                    reject(error)
+                }
+
+                resolve(data.format.duration || 0)
+            })
         })
     }
 
@@ -114,7 +114,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         }
 
         context.labels.video.push(`[v${context.inputIndex}]`)
-        context.labels.audio.push(currentAudioOutput)
+        context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
         context.audioIndex++

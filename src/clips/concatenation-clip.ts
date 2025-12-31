@@ -1,18 +1,18 @@
 import { RenderContext } from "../render-context"
 import { Clip } from "./clip"
 
-export type CompositionClipOptions<RenderData> = {
+export type ConcatenationClipOptions<RenderData> = {
     clips: Clip<RenderData>[]
 }
 
-export class CompositionClip<RenderData> extends Clip<RenderData> {
+export class ConcatenationClip<RenderData> extends Clip<RenderData> {
     readonly clips: Clip<RenderData>[]
 
-    constructor({ clips }: CompositionClipOptions<RenderData>) {
+    constructor({ clips }: ConcatenationClipOptions<RenderData>) {
         super()
 
-        if (clips.length === 0) {
-            throw new Error("CompositionClip: at least one clip is required")
+        if (clips.length < 2) {
+            throw new Error("ConcatenationClip: at least two clips are required")
         }
 
         this.clips = clips
@@ -22,7 +22,6 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
         const startVideoIndex = context.labels.video.length
         const startAudioIndex = context.labels.structuralAudio.length
 
-        /** 1️⃣ build dos clips filhos */
         for (const clip of this.clips) {
             await clip.build(data, context)
         }
@@ -32,7 +31,7 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
 
         if (videoLabels.length !== audioLabels.length) {
             throw new Error(
-                `CompositionClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`
+                `ConcatenationClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`
             )
         }
 
@@ -50,11 +49,9 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
             outputs: outV + outA
         })
 
-        /** 4️⃣ remove os labels antigos */
         context.labels.video.splice(startVideoIndex)
         context.labels.structuralAudio.splice(startAudioIndex)
 
-        /** 5️⃣ registra o resultado do composition */
         context.labels.video.push(outV)
         context.labels.structuralAudio.push(outA)
     }

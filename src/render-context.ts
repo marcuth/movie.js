@@ -12,6 +12,7 @@ export type RenderContext = {
     filters: FFmpegFilterSpec[]
     labels: {
         video: string[]
-        audio: string[]
+        structuralAudio: string[]
+        mixAudio: string[]
     }
 }

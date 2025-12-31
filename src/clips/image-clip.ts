@@ -139,7 +139,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         }
 
         context.labels.video.push(`[v${context.inputIndex}]`)
-        context.labels.audio.push(currentAudioOutput)
+        context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
         context.audioIndex++

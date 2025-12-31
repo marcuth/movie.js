@@ -30,30 +30,11 @@ export class Template<RenderData> {
             audioIndex: 0,
             filters: [],
             labels: {
-                audio: [],
+                structuralAudio: [],
+                mixAudio: [],
                 video: []
             },
         }
-
-        await this.runBuildWithProgress(data, context)
-
-        const stringLabels = context.labels.video
-            .map((videoLabel, index) => `${videoLabel}${context.labels.audio[index]}`)
-            .join("")
-
-        const concatFilter =
-            `${stringLabels}concat=n=${context.labels.video.length}:v=1:a=1[outv][outa]`
-
-        console.dir({
-            stringLabels,
-            concatFilter,
-            context: {
-                ...context,
-                command: "<command>"
-            }
-        }, {
-            depth: null
-        })
 
         if (this.options.debug) {
             command
@@ -66,7 +47,44 @@ export class Template<RenderData> {
                 })
         }
 
-        const filterComplex = [...context.filters, concatFilter]
+        await this.runBuildWithProgress(data, context)
+
+        const concatFilter =
+            context.labels.video
+                .map((v, i) => `${v}${context.labels.structuralAudio[i]}`)
+                .join("") +
+            `concat=n=${context.labels.video.length}:v=1:a=1[outv][basea]`
+
+        const mixFilter =
+            context.labels.mixAudio.length > 0
+                ? `${context.labels.mixAudio.join("")}amix=inputs=${context.labels.mixAudio.length}[mixa]`
+                : null
+
+        const finalAudioFilter =
+            mixFilter
+                ? `[basea][mixa]amix=inputs=2[outa]`
+                : `[basea]anull[outa]`
+
+        const filterComplex = [
+            ...context.filters,
+            concatFilter,
+            mixFilter,
+            finalAudioFilter
+        ].filter((filter) => filter !== null)
+
+        console.dir({
+            concatFilter,
+            finalAudioFilter,
+            mixFilter,
+            filterComplex,
+            context: {
+                ...context,
+                command: "<command>"
+            }
+        }, {
+            depth: null
+        })
+
         command.complexFilter(filterComplex)
 
         command.outputOptions([
