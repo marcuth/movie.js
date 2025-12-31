@@ -18,9 +18,9 @@ export abstract class Clip<RenderData> {
         return this.when ? this.when({ data, index }) : true
     }
 
-    protected getInput(inputIndex: number, fps?: number): FFmpegInput {
+    protected getInput(inputIndex: number, audioIndex: number, fps?: number): FFmpegInput {
         throw new Error("Method not implemented.")
     }
 
-    abstract build(data: RenderData, context: RenderContext): void
+    abstract build(data: RenderData, context: RenderContext): void | Promise<void>
 }

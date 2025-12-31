@@ -1,3 +1,5 @@
+import { ffprobe } from "fluent-ffmpeg"
+
 import { FFmpegInput } from "../ffmpeg-input"
 import { RenderContext } from "../render-context"
 import { Axis } from "../utils/resolve-axis"
@@ -27,56 +29,94 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         this.fadeOut = fadeOut
     }
 
-    protected getInputs(inputIndex: number): FFmpegInput {
+    protected getInputs(inputIndex: number, audioIndex: number): FFmpegInput {
         return {
             path: this.path,
-            alias: `[${inputIndex}:v]`,
+            aliases: {
+                video: `[${inputIndex}:v]`,
+                audio: `[${audioIndex}:a]`
+            },
             type: "video",
             index: inputIndex,
         }
     }
 
-    build(data: RenderData, context: RenderContext): void {
-        const input = this.getInputs(context.inputIndex)
-        const inputAlias = input.alias
-        let currentOutput = inputAlias
+    async getDuration(): Promise<number> {
+        return await new Promise<number>((resolve, reject) => {
+                ffprobe(this.path, (error, data) => {
+                    if (error) {
+                        reject(error)
+                    }
+                    
+                    resolve(data.format.duration || 0)
+                })
+        })
+    }
+
+    async build(data: RenderData, context: RenderContext): Promise<void> {
+        const input = this.getInputs(context.inputIndex, context.audioIndex)
+        let currentVideoOutput = input.aliases.video
+        let currentAudioOutput = input.aliases.audio
+        const duration = await this.getDuration()
 
         context.command
             .input(input.path)
 
         if (this.fadeIn !== undefined && this.fadeIn > 0) {
-            const fadeInOutput = `fadeIn${context.inputIndex}`
+            const fadeInOutput = `[fadeIn${context.inputIndex}]`
+            const fadeInAudioOutput = `[fadeInAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "fade",
                 options: { t: "in", st: 0, d: this.fadeIn },
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: fadeInOutput
             })
 
-            currentOutput = fadeInOutput
+            context.filters.push({
+                filter: "afade",
+                options: { t: "in", st: 0, d: this.fadeIn },
+                inputs: currentAudioOutput,
+                outputs: fadeInAudioOutput
+            })
+
+            currentVideoOutput = fadeInOutput
+            currentAudioOutput = fadeInAudioOutput
         }
 
         if (this.fadeOut !== undefined && this.fadeOut > 0) {
+            const start = Math.max(duration - this.fadeOut, 0)
             const fadeOutOutput = `[v${context.inputIndex}]`
+            const fadeOutAudioOutput = `[fadeOutAudio${context.inputIndex}]`
 
             context.filters.push({
                 filter: "fade",
-                options: { t: "out", st: `0`, d: this.fadeOut },
-                inputs: currentOutput,
+                options: { t: "out", st: start, d: this.fadeOut },
+                inputs: currentVideoOutput,
                 outputs: fadeOutOutput
             })
 
-            currentOutput = fadeOutOutput
+            context.filters.push({
+                filter: "afade",
+                options: { t: "out", st: start, d: this.fadeOut },
+                inputs: currentAudioOutput,
+                outputs: fadeOutAudioOutput
+            })
+
+            currentVideoOutput = fadeOutOutput
+            currentAudioOutput = fadeOutAudioOutput
         } else {
             context.filters.push({
                 filter: "null",
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: `[v${context.inputIndex}]`
             })
         }
 
-        context.labels.push(`[v${context.inputIndex}]`)
+        context.labels.video.push(`[v${context.inputIndex}]`)
+        context.labels.audio.push(currentAudioOutput)
+
         context.inputIndex++
+        context.audioIndex++
     }
 }

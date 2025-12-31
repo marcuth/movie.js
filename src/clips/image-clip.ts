@@ -45,11 +45,14 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.height = height
     }
 
-    protected getInput(inputIndex: number, fps: number): FFmpegInput {
+    protected getInput(inputIndex: number, audioIndex: number, fps: number): FFmpegInput {
         return {
             path: this.path,
             index: Number(inputIndex),
-            alias: `[${inputIndex}:v]`,
+            aliases: {
+                video: `[${inputIndex}:v]`,
+                audio: `[${audioIndex}:a]`
+            },
             type: "image" as const,
             options: [
                 "-loop 1",
@@ -61,13 +64,31 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
     }
 
     build(data: RenderData, context: RenderContext): void {
-        const input = this.getInput(context.inputIndex, context.fps)
-        const inputAlias = input.alias
-        let currentOutput = inputAlias
+        const input = this.getInput(context.inputIndex, context.audioIndex, context.fps)
+        let currentVideoOutput = input.aliases.video
+        let currentAudioOutput = input.aliases.audio
 
         context.command
             .input(input.path)
             .inputOptions(input.options!)
+
+        const anullSrcLabel = `[anull${context.inputIndex}]`
+        const audioLabel = `[a${context.inputIndex}]`
+
+        context.filters.push({
+            filter: "anullsrc",
+            options: { sample_rate: 44100, channel_layout: "stereo" },
+            outputs: anullSrcLabel,
+        })
+
+        context.filters.push({
+            filter: "atrim",
+            options: { end: this.duration },
+            inputs: anullSrcLabel,
+            outputs: audioLabel,
+        })
+
+        currentAudioOutput = audioLabel
 
         if (this.width !== undefined || this.height !== undefined) {
             const scaleOutput = `scale${context.inputIndex}`
@@ -75,11 +96,11 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "scale",
                 options: { w: this.width ?? -1, h: this.height ?? -1 },
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: scaleOutput,
             })
 
-            currentOutput = scaleOutput
+            currentVideoOutput = scaleOutput
         }
 
         if (this.fadeIn && this.fadeIn > 0) {
@@ -88,11 +109,11 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "fade",
                 options: { t: "in", st: 0, d: this.fadeIn },
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: fadeInOutput
             })
 
-            currentOutput = fadeInOutput
+            currentVideoOutput = fadeInOutput
         }
 
         if (this.fadeOut && this.fadeOut > 0) {
@@ -102,22 +123,25 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "fade",
                 options: { t: "out", st: start, d: this.fadeOut },
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: fadeOutOutput
             })
 
-            currentOutput = fadeOutOutput
+            currentVideoOutput = fadeOutOutput
         }
 
         if (!this.fadeOut || this.fadeOut <= 0) {
             context.filters.push({
                 filter: "null",
-                inputs: currentOutput,
+                inputs: currentVideoOutput,
                 outputs: `[v${context.inputIndex}]`
             })
         }
 
-        context.labels.push(`[v${context.inputIndex}]`)
+        context.labels.video.push(`[v${context.inputIndex}]`)
+        context.labels.audio.push(currentAudioOutput)
+
         context.inputIndex++
+        context.audioIndex++
     }
 }

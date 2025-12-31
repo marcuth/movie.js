@@ -23,8 +23,8 @@ async function main() {
                 path: introFilePath,
                 x: 0,
                 y: 0,
-                fadeIn: 1,
-                fadeOut: 1,
+                fadeIn: .5,
+                fadeOut: .5,
             }),
             movie.repeat({
                 each: () => dragonFiles,
@@ -36,10 +36,10 @@ async function main() {
                 })
             }),
             movie.repeat({
-                each: () => lapFiles,
+                each: () => lapFiles.slice(0, 1),
                 clip: (file) => movie.image({
                     path: file,
-                    duration: 5,
+                    duration: 10,
                     fadeIn: 1,
                     fadeOut: 1,
                 })
@@ -48,15 +48,15 @@ async function main() {
                 path: endOfVideoFilePath,
                 x: 0,
                 y: 0,
-                fadeIn: 1,
-                fadeOut: 1,
+                fadeIn: .5,
+                fadeOut: .5,
             }),
         ]
     })
 
     const result = await template.render({})
 
-    result.toFile(path.join(__dirname, "heroic-races.mp4"))
+    result.toFile(path.join(__dirname, "heroic-races1.mp4"))
 }
 
 main()

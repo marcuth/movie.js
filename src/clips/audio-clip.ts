@@ -55,7 +55,10 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         return [
             {
                 path: this.path,
-                alias: `[a${inputIndex}:a]`,
+                aliases: {
+                    video: `[a${inputIndex}:v]`,
+                    audio: `[a${inputIndex}:a]`
+                },
                 type: "audio",
                 options: inputOptions,
                 index: inputIndex

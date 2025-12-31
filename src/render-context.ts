@@ -8,6 +8,10 @@ export type RenderContext = {
     offsetY: number
     fps: number
     inputIndex: number
+    audioIndex: number
     filters: FFmpegFilterSpec[]
-    labels: string[]
+    labels: {
+        video: string[]
+        audio: string[]
+    }
 }

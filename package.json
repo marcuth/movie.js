@@ -1,6 +1,6 @@
 {
-  "name": "pellicula",
-  "version": "1.0.0",
+  "name": "@marcuth/movie.js",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {

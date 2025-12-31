@@ -1,7 +1,10 @@
 export type FFmpegInput = {
     path: string
     index: number
-    alias: string
+    aliases: {
+        video: string
+        audio: string
+    }
     type: "video" | "audio" | "image" | "rectangle"
     options?: string[]
 }

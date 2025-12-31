@@ -1,7 +1,7 @@
 import cliProgress from "cli-progress"
 import ffmpeg from "fluent-ffmpeg"
 
-import { AudioClip, Clip, ImageClip, RepeatClip, VideoClip } from "./clips"
+import { Clip } from "./clips"
 import { RenderContext } from "./render-context"
 import { RenderResult } from "./render-result"
 
@@ -27,66 +27,64 @@ export class Template<RenderData> {
             command: command,
             fps: this.options.config.fps,
             inputIndex: 0,
+            audioIndex: 0,
             filters: [],
-            labels: []
-        }
-
-        const progressBar = new cliProgress.SingleBar(
-            {
-                format: "Rendering |{bar}| {percentage}% | {value}/{total}",
-                barCompleteChar: "█",
-                barIncompleteChar: "░",
-                hideCursor: true,
+            labels: {
+                audio: [],
+                video: []
             },
-            cliProgress.Presets.shades_classic
-        )
-
-        let progressStarted = false
-
-        for (const clip of this.options.clips) {
-            clip.build(data, context)
         }
 
-        const stringLabels = context.labels.join("")
+        const estimatedTotalDuration = await this.runBuildWithProgress(data, context)
+
+        const stringLabels = context.labels.video
+            .map((videoLabel, index) => `${videoLabel}${context.labels.audio[index]}`)
+            .join("")
 
         const concatFilter =
-            `${stringLabels}concat=n=${context.labels.length}:v=1:a=0[outv]`
+            `${stringLabels}concat=n=${context.labels.video.length}:v=1:a=1[outv][outa]`
+
+        /* 
+        console.dir({
+            stringLabels,
+            concatFilter,
+            context: {
+                ...context,
+                command: "<command>"
+            }
+        }, {
+            depth: null
+        })
+        */
 
         const filterComplex = [...context.filters, concatFilter]
         command.complexFilter(filterComplex)
 
         command.outputOptions([
             "-map [outv]",
+            "-map [outa]",
             "-c:v libx264",
+            "-c:a aac",
             "-pix_fmt yuv420p",
             ...(this.options.config.outputOptions ?? [])
         ])
 
-        if (this.options.debug) {
-            command
-                .on("start", cmd => console.log("FFmpeg:", cmd))
-                .on("error", err => console.error("FFmpeg error:", err))
-        }
-
-        command
-            .on("progress", progress => {
-                if (progress.percent != null) {
-                    if (!progressStarted) {
-                        progressBar.start(100, 0)
-                        progressStarted = true
-                    }
-
-                    progressBar.update(Math.min(progress.percent, 100))
-                }
-            })
-            .on("end", () => {
-                if (progressStarted) {
-                    progressBar.update(100)
-                    progressBar.stop()
-                }
-            })
-
         return new RenderResult(this.options.config.format, command)
     }
 
+    private async runBuildWithProgress(data: RenderData, context: RenderContext): Promise<number> {
+        const buildBar = new cliProgress.SingleBar({ format: "Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
+        buildBar.start(this.options.clips.length, 0)
+
+        for (let i = 0; i < this.options.clips.length; i++) {
+            const clip = this.options.clips[i]
+            await clip.build(data, context)
+            buildBar.increment()
+        }
+
+        buildBar.stop()
+
+        const estimatedTotalDuration = this.options.clips.reduce((sum, c: any) => sum + (typeof c.duration === "number" ? c.duration : 0), 0)
+        return estimatedTotalDuration
+    }
 }
