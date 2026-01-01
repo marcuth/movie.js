@@ -1,12 +1,10 @@
-import { FFmpegInput } from "../ffmpeg-input"
 import { RenderContext } from "../render-context"
-import { Axis } from "../utils/resolve-axis"
+import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
+import { Path, resolvePath } from "../utils/resolve-path"
 
 export type ImageClipOptions<RenderData> = {
-    path: string
-    x?: Axis<RenderData>
-    y?: Axis<RenderData>
+    path: Path<RenderData>
     width?: number
     height?: number
     duration: number
@@ -15,18 +13,14 @@ export type ImageClipOptions<RenderData> = {
 }
 
 export class ImageClip<RenderData> extends Clip<RenderData> {
-    readonly x?: Axis<RenderData>
-    readonly y?: Axis<RenderData>
     readonly duration: number
-    readonly path: string
+    readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
     readonly width?: number
     readonly height?: number
 
     constructor({
-        x,
-        y,
         duration,
         path,
         width,
@@ -35,8 +29,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         fadeOut
     }: ImageClipOptions<RenderData>) {
         super()
-        this.x = x
-        this.y = y
+
         this.duration = duration
         this.path = path
         this.fadeIn = fadeIn
@@ -45,13 +38,13 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.height = height
     }
 
-    protected getInput(inputIndex: number, audioIndex: number, fps: number): FFmpegInput {
+    protected getInput(path: string, inputIndex: number, fps: number): FFmpegInput {
         return {
-            path: this.path,
+            path: path,
             index: Number(inputIndex),
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[${audioIndex}:a]`
+                audio: `[a${inputIndex}]`
             },
             type: "image" as const,
             options: [
@@ -64,16 +57,16 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
     }
 
     build(data: RenderData, context: RenderContext): void {
-        const input = this.getInput(context.inputIndex, context.audioIndex, context.fps)
+        const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
+        const input = this.getInput(path, context.inputIndex, context.fps)
         let currentVideoOutput = input.aliases.video
-        let currentAudioOutput = input.aliases.audio
+        const currentAudioOutput = input.aliases.audio
 
         context.command
             .input(input.path)
             .inputOptions(input.options!)
 
         const anullSrcLabel = `[anull${context.inputIndex}]`
-        const audioLabel = `[a${context.inputIndex}]`
 
         context.filters.push({
             filter: "anullsrc",
@@ -85,10 +78,8 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             filter: "atrim",
             options: { end: this.duration },
             inputs: anullSrcLabel,
-            outputs: audioLabel,
+            outputs: currentAudioOutput,
         })
-
-        currentAudioOutput = audioLabel
 
         if (this.width !== undefined || this.height !== undefined) {
             const scaleOutput = `scale${context.inputIndex}`
@@ -142,6 +133,5 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
-        context.audioIndex++
     }
 }

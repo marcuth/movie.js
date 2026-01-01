@@ -22,12 +22,10 @@ export class Template<RenderData> {
         const command = ffmpeg()
 
         const context: RenderContext = {
-            offsetX: 0,
-            offsetY: 0,
             command: command,
             fps: this.options.config.fps,
             inputIndex: 0,
-            audioIndex: 0,
+            clipIndex: 0,
             filters: [],
             labels: {
                 structuralAudio: [],

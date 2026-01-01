@@ -2,48 +2,42 @@ import { ffprobe } from "fluent-ffmpeg"
 
 import { FFmpegInput } from "../ffmpeg-input"
 import { RenderContext } from "../render-context"
-import { Axis } from "../utils/resolve-axis"
 import { Clip } from "./clip"
+import { Path, resolvePath } from "../utils/resolve-path"
 
 export type VideoClipOptions<RenderData> = {
-    path: string
-    x: Axis<RenderData>
-    y: Axis<RenderData>
+    path: Path<RenderData>
     fadeIn?: number
     fadeOut?: number
 }
 
 export class VideoClip<RenderData> extends Clip<RenderData> {
-    readonly x: Axis<RenderData>
-    readonly y: Axis<RenderData>
-    readonly path: string
+    readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
 
-    constructor({ path, x, y, fadeIn, fadeOut }: VideoClipOptions<RenderData>) {
+    constructor({ path, fadeIn, fadeOut }: VideoClipOptions<RenderData>) {
         super()
         this.path = path
-        this.x = x
-        this.y = y
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
     }
 
-    protected getInputs(inputIndex: number, audioIndex: number): FFmpegInput {
+    protected getInput(path: string, inputIndex: number): FFmpegInput {
         return {
-            path: this.path,
+            path: path,
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[${audioIndex}:a]`
+                audio: `[a${inputIndex}]`
             },
             type: "video",
             index: inputIndex,
         }
     }
 
-    async getDuration(): Promise<number> {
+    async getDuration(path: string): Promise<number> {
         return await new Promise<number>((resolve, reject) => {
-            ffprobe(this.path, (error, data) => {
+            ffprobe(path, (error, data) => {
                 if (error) {
                     reject(error)
                 }
@@ -54,13 +48,13 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
     }
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
-        const input = this.getInputs(context.inputIndex, context.audioIndex)
+        const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
+        const input = this.getInput(path, context.inputIndex)
         let currentVideoOutput = input.aliases.video
         let currentAudioOutput = input.aliases.audio
-        const duration = await this.getDuration()
-
-        context.command
-            .input(input.path)
+        const duration = await this.getDuration(path)
+        
+        context.command.input(path)
 
         if (this.fadeIn !== undefined && this.fadeIn > 0) {
             const fadeInOutput = `[fadeIn${context.inputIndex}]`
@@ -117,6 +111,5 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
-        context.audioIndex++
     }
 }

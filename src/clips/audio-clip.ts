@@ -1,28 +1,26 @@
 import ffmpeg from "fluent-ffmpeg"
-import { FFmpegInput } from "../ffmpeg-input"
+
+import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
+import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
 
-export type AudioClipOptions = {
-    path: string
+export type AudioClipOptions<RenderData> = {
+    path: Path<RenderData>
     volume?: number
     loop?: boolean
     subClip?: [number, number]
     fadeIn?: number
     fadeOut?: number
-    startAt?: number
-    endAt?: number
 }
 
 export class AudioClip<RenderData> extends Clip<RenderData> {
-    readonly path: string
+    readonly path: Path<RenderData>
     readonly volume?: number
     readonly loop?: boolean
     readonly subClip?: [number, number]
     readonly fadeIn?: number
     readonly fadeOut?: number
-    readonly startAt?: number
-    readonly endAt?: number
 
     constructor({
         path,
@@ -31,9 +29,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         subClip,
         fadeIn,
         fadeOut,
-        startAt,
-        endAt
-    }: AudioClipOptions) {
+    }: AudioClipOptions<RenderData>) {
         super()
 
         this.path = path
@@ -42,11 +38,9 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         this.subClip = subClip
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
-        this.startAt = startAt
-        this.endAt = endAt
     }
 
-    protected getInput(inputIndex: number): FFmpegInput {
+    protected getInput(path: string, inputIndex: number): FFmpegInput {
         const inputOptions: string[] = []
 
         if (this.loop) {
@@ -60,10 +54,9 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
 
         return {
-            path: this.path,
+            path: path,
             aliases: {
-                video: "",
-                audio: `[${inputIndex}:a]`
+                audio: `[${inputIndex}:a]`,
             },
             type: "audio",
             options: inputOptions,
@@ -71,8 +64,21 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
     }
 
+    async getDuration(path: string): Promise<number> {
+        try {
+            const metadata = await new Promise<ffmpeg.FfprobeData>((resolve, reject) => {
+                ffmpeg.ffprobe(path, (err, data) => err ? reject(err) : resolve(data))
+            })
+
+            return Math.floor(metadata?.format?.duration ?? 0)
+        } catch (err) {
+            return 0
+        }
+    }
+
     async build(data: RenderData, context: RenderContext): Promise<void> {
-        const input = this.getInput(context.inputIndex)
+        const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
+        const input = this.getInput(path, context.inputIndex)
 
         context.command.input(input.path)
 
@@ -80,32 +86,25 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
             context.command.inputOptions(input.options)
         }
 
-        let duration = 0
+        let duration = await this.getDuration(path)
 
         if (this.subClip) {
             const [start, end] = this.subClip
             duration = Math.max(end - start, 0)
-        } else {
-            try {
-                const metadata: any = await new Promise((resolve, reject) => {
-                    ffmpeg.ffprobe(this.path, (err, data) => err ? reject(err) : resolve(data))
-                })
-                duration = Math.floor(metadata?.format?.duration ?? 0)
-            } catch (err) {
-                duration = 0
-            }
         }
 
         let currentAudioOutput = input.aliases.audio
 
-        if (duration > 0) {
+        if (duration > 0 && !this.loop) {
             const trimOutput = `[trimAudio${context.inputIndex}]`
+
             context.filters.push({
                 filter: "atrim",
                 options: { end: duration },
                 inputs: currentAudioOutput,
                 outputs: trimOutput,
             })
+
             currentAudioOutput = trimOutput
         }
 
@@ -150,39 +149,8 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
             currentAudioOutput = volumeOutput
         }
 
-        if (this.startAt && this.startAt > 0) {
-            const delayMs = Math.floor(this.startAt * 1000)
-            const delayOutput = `[delayAudio${context.inputIndex}]`
-
-            context.filters.push({
-                filter: "adelay",
-                options: `${delayMs}|${delayMs}`,
-                inputs: currentAudioOutput,
-                outputs: delayOutput
-            })
-
-            currentAudioOutput = delayOutput
-        }
-
-        if (this.endAt && this.endAt > 0) {
-            const trimOutput = `[endTrimAudio${context.inputIndex}]`
-
-            context.filters.push({
-                filter: "atrim",
-                options: {
-                    start: 0,
-                    end: this.endAt
-                },
-                inputs: currentAudioOutput,
-                outputs: trimOutput
-            })
-
-            currentAudioOutput = trimOutput
-        }
-
         context.labels.mixAudio.push(currentAudioOutput)
-
-        context.audioIndex++
+        
         context.inputIndex++
     }
 }

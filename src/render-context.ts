@@ -4,11 +4,9 @@ import { FFmpegFilterSpec } from "./ffmpeg-filter-spec"
 
 export type RenderContext = {
     command: ffmpeg.FfmpegCommand
-    offsetX: number
-    offsetY: number
     fps: number
     inputIndex: number
-    audioIndex: number
+    clipIndex: number
     filters: FFmpegFilterSpec[]
     labels: {
         video: string[]

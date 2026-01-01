@@ -1,4 +1,4 @@
-import { TextClipFontOptions } from "../clips"
+import {  } from "../clips"
 
 export type FontConfigOptions = {
     color?: string

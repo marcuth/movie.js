@@ -11,8 +11,8 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
     constructor({ clips }: ConcatenationClipOptions<RenderData>) {
         super()
 
-        if (clips.length < 2) {
-            throw new Error("ConcatenationClip: at least two clips are required")
+        if (clips.length < 1) {
+            throw new Error("ConcatenationClip: at least one clip is required")
         }
 
         this.clips = clips

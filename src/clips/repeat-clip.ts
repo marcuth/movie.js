@@ -1,5 +1,4 @@
 import { RenderContext } from "../render-context"
-import { Axis } from "../utils/resolve-axis"
 import { Clip } from "./clip"
 
 export type EachOptions<Data> = {
@@ -16,8 +15,6 @@ export type ClipFunction<RenderData, Item> = (item: Item, options: ClipFunctionO
 
 export type RepeatClipOptions<RenderData, Item> = {
     each: EachFunction<RenderData, Item>
-    x?: Axis<RenderData>
-    y?: Axis<RenderData>
     clip: ClipFunction<RenderData, Item>
 }
 
@@ -26,20 +23,14 @@ export type EachFunction<Data, Item> = (options: EachOptions<Data>) => Item[]
 export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
     readonly each: EachFunction<RenderData, Item>
     readonly clip: ClipFunction<RenderData, Item>
-    readonly x?: Axis<RenderData>
-    readonly y?: Axis<RenderData>
 
     constructor({
         each,
-        x,
-        y,
         clip,
     }: RepeatClipOptions<RenderData, Item>) {
         super()
         this.each = each
         this.clip = clip
-        this.x = x
-        this.y = y
     }
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
@@ -49,7 +40,11 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
         for (let i = 0; i < length; i++) {
             const item = items[i]
             const clip = this.clip(item, { index: i, length: length })
+
+            const oldClipIndex = context.clipIndex
+            context.clipIndex = i
             await clip.build(data, context)
+            context.clipIndex = oldClipIndex
         }
     }
 }
