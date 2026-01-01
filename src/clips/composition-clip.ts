@@ -21,14 +21,15 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
     async build(data: RenderData, context: RenderContext): Promise<void> {
         const startVideoIndex = context.labels.video.length
         const startAudioIndex = context.labels.structuralAudio.length
+        const startMixAudioIndex = context.labels.mixAudio.length
 
-        /** 1️⃣ build dos clips filhos */
         for (const clip of this.clips) {
             await clip.build(data, context)
         }
 
         const videoLabels = context.labels.video.slice(startVideoIndex)
         const audioLabels = context.labels.structuralAudio.slice(startAudioIndex)
+        const mixAudioLabels = context.labels.mixAudio.slice(startMixAudioIndex)
 
         if (videoLabels.length !== audioLabels.length) {
             throw new Error(
@@ -37,6 +38,7 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
         }
 
         const outV = `[v${context.labels.video.length}]`
+        const outBaseA = `[baseA${context.labels.structuralAudio.length}]`
         const outA = `[a${context.labels.structuralAudio.length}]`
 
         context.filters.push({
@@ -47,14 +49,42 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
                 a: 1
             },
             inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
-            outputs: outV + outA
+            outputs: outV + outBaseA
         })
 
-        /** 4️⃣ remove os labels antigos */
+        if (mixAudioLabels.length > 0) {
+            const mixLabel = `[mix${context.labels.structuralAudio.length}]`
+
+            context.filters.push({
+                filter: "amix",
+                options: {
+                    inputs: mixAudioLabels.length
+                },
+                inputs: mixAudioLabels.join(""),
+                outputs: mixLabel
+            })
+
+            context.filters.push({
+                filter: "amix",
+                options: {
+                    inputs: 2,
+                    duration: "first"
+                },
+                inputs: `${outBaseA}${mixLabel}`,
+                outputs: outA
+            })
+        } else {
+            context.filters.push({
+                filter: "anull",
+                inputs: outBaseA,
+                outputs: outA
+            })
+        }
+
         context.labels.video.splice(startVideoIndex)
         context.labels.structuralAudio.splice(startAudioIndex)
+        context.labels.mixAudio.splice(startMixAudioIndex)
 
-        /** 5️⃣ registra o resultado do composition */
         context.labels.video.push(outV)
         context.labels.structuralAudio.push(outA)
     }

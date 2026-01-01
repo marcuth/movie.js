@@ -52,8 +52,9 @@ async function main() {
                     }),
                     movie.audio({
                         path: path.join(__dirname, "better_days.mp3"),
-                        startAt: 5,
-                        endAt: 5 + dragonFiles.length * 5 + lapFiles.slice(0, 1).length * 10,
+                        // startAt: 5,
+                        // endAt: 5 + dragonFiles.length * 5 + lapFiles.slice(0, 1).length * 10,
+                        loop: true
                     }),
                 ],
             }),
