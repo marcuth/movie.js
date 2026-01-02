@@ -1,14 +1,25 @@
 {
   "name": "@marcuth/movie.js",
   "version": "0.0.1",
-  "description": "",
-  "main": "index.js",
+  "description": "Video template builder",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/*",
+    "!/**/__tests__"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "moviepy",
+    "video",
+    "ffmpeg wrapper",
+    "video template builder"
+  ],
+  "author": "Marcuth",
+  "license": "MIT",
   "type": "commonjs",
   "devDependencies": {
     "@types/cli-progress": "^3.11.6",

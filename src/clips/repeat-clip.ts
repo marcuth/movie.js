@@ -1,3 +1,5 @@
+import cliProgress from "cli-progress"
+
 import { RenderContext } from "../render-context"
 import { Clip } from "./clip"
 
@@ -35,16 +37,20 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
         const items = this.each({ data: data, index: 0 })
+        await this.runBuildWithProgress(items, data, context)
+    }
+
+    private async runBuildWithProgress(items: Item[], data: RenderData, context: RenderContext) {
+        const buildBar = new cliProgress.SingleBar({ format: "Repeat Clip Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
+        buildBar.start(items.length, 0)
         const length = items.length
 
         for (let i = 0; i < length; i++) {
-            const item = items[i]
-            const clip = this.clip(item, { index: i, length: length })
-
-            const oldClipIndex = context.clipIndex
-            context.clipIndex = i
+            const clip = this.clip(items[i], { index: i, length: length })
             await clip.build(data, context)
-            context.clipIndex = oldClipIndex
+            buildBar.increment()
         }
+
+        buildBar.stop()
     }
 }

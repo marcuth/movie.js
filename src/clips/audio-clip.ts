@@ -122,19 +122,35 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
 
         if (this.fadeOut && this.fadeOut > 0) {
-            const start = Math.max((duration || 0) - this.fadeOut, 0)
             const fadeOutOutput = `[fadeOutAudio${context.inputIndex}]`
 
-            context.filters.push({
-                filter: "afade",
-                options: { t: "out", st: start, d: this.fadeOut },
-                inputs: currentAudioOutput,
-                outputs: fadeOutOutput
-            })
+            if (this.loop) {
+                context.filters.push({
+                    filter: "afade",
+                    options: {
+                        t: "out",
+                        d: this.fadeOut
+                    },
+                    inputs: currentAudioOutput,
+                    outputs: fadeOutOutput
+                })
+            } else {
+                const start = Math.max((duration || 0) - this.fadeOut, 0)
+
+                context.filters.push({
+                    filter: "afade",
+                    options: {
+                        t: "out",
+                        st: start,
+                        d: this.fadeOut
+                    },
+                    inputs: currentAudioOutput,
+                    outputs: fadeOutOutput
+                })
+            }
 
             currentAudioOutput = fadeOutOutput
         }
-
 
         if (this.volume !== undefined) {
             const volumeOutput = `[volAudio${context.inputIndex}]`
@@ -150,7 +166,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
 
         context.labels.mixAudio.push(currentAudioOutput)
-        
+
         context.inputIndex++
     }
 }

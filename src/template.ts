@@ -34,16 +34,16 @@ export class Template<RenderData> {
             },
         }
 
-        if (this.options.debug) {
-            command
-                .on("start", (commandLine) => {
-                    console.log("Spawned Ffmpeg with command: " + commandLine)
-                })
-                .on("error", (err, stdout, stderr) => {
-                    console.error("Error: " + err.message)
-                    console.error("ffmpeg stderr: " + stderr)
-                })
-        }
+        // if (this.options.debug) {
+        //     command
+        //         .on("start", (commandLine) => {
+        //             console.log("Spawned Ffmpeg with command: " + commandLine)
+        //         })
+        //         .on("error", (err, stdout, stderr) => {
+        //             console.error("Error: " + err.message)
+        //             console.error("ffmpeg stderr: " + stderr)
+        //         })
+        // }
 
         await this.runBuildWithProgress(data, context)
 
@@ -70,18 +70,18 @@ export class Template<RenderData> {
             finalAudioFilter
         ].filter((filter) => filter !== null)
 
-        console.dir({
-            concatFilter,
-            finalAudioFilter,
-            mixFilter,
-            filterComplex,
-            context: {
-                ...context,
-                command: "<command>"
-            }
-        }, {
-            depth: null
-        })
+        // console.dir({
+        //     concatFilter,
+        //     finalAudioFilter,
+        //     mixFilter,
+        //     filterComplex,
+        //     context: {
+        //         ...context,
+        //         command: "<command>"
+        //     }
+        // }, {
+        //     depth: null
+        // })
 
         command.complexFilter(filterComplex)
 
@@ -98,7 +98,7 @@ export class Template<RenderData> {
     }
 
     private async runBuildWithProgress(data: RenderData, context: RenderContext) {
-        const buildBar = new cliProgress.SingleBar({ format: "Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
+        const buildBar = new cliProgress.SingleBar({ format: "Template Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
         buildBar.start(this.options.clips.length, 0)
 
         for (let i = 0; i < this.options.clips.length; i++) {
