@@ -1,7 +1,7 @@
+import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
-import { Path, resolvePath } from "../utils/resolve-path"
 
 export type ImageClipOptions<RenderData> = {
     path: Path<RenderData>

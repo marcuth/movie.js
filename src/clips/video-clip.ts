@@ -1,9 +1,9 @@
 import { ffprobe } from "fluent-ffmpeg"
 
-import { FFmpegInput } from "../ffmpeg-input"
-import { RenderContext } from "../render-context"
-import { Clip } from "./clip"
 import { Path, resolvePath } from "../utils/resolve-path"
+import { RenderContext } from "../render-context"
+import { FFmpegInput } from "../ffmpeg-input"
+import { Clip } from "./clip"
 
 export type VideoClipOptions<RenderData> = {
     path: Path<RenderData>

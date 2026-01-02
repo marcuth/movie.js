@@ -1,5 +1,5 @@
-import { FFmpegInput } from "../ffmpeg-input"
 import { RenderContext } from "../render-context"
+import { FFmpegInput } from "../ffmpeg-input"
 
 export type WhenOptions<Data> = {
     data: Data
