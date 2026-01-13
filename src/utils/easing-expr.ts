@@ -4,13 +4,13 @@ export function easingExpr(
 ) {
     switch (easing) {
         case "linear":
-            return `(${t})`  // Adicionar parênteses para garantir que a expressão seja avaliada
+            return `(${t})`
         case "easeIn":
             return `pow(${t},2)`
         case "easeOut":
-            return `1-pow(1-(${t}),2)`  // Adicionar parênteses extras
+            return `1-pow(1-(${t}),2)`
         case "easeInOut":
-            return `if(lt(${t},0.5),2*pow(${t},2),1-2*pow(1-(${t}),2))`  // Adicionar parênteses extras
+            return `if(lt(${t},0.5),2*pow(${t},2),1-2*pow(1-(${t}),2))`
         default:
             return `(${t})`
     }
