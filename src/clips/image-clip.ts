@@ -10,6 +10,10 @@ export type ImageClipOptions<RenderData> = {
     duration: number
     fadeIn?: number
     fadeOut?: number
+    scroll?: {
+        direction?: "up" | "down"
+        easing?: "linear" | "easeIn" | "easeOut" | "easeInOut"
+    }
 }
 
 export class ImageClip<RenderData> extends Clip<RenderData> {
@@ -19,6 +23,10 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
     readonly fadeOut?: number
     readonly width?: number
     readonly height?: number
+    readonly scroll?: {
+        direction?: "up" | "down"
+        easing?: "linear" | "easeIn" | "easeOut" | "easeInOut"
+    }
 
     constructor({
         duration,
@@ -26,7 +34,8 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         width,
         height,
         fadeIn,
-        fadeOut
+        fadeOut,
+        scroll
     }: ImageClipOptions<RenderData>) {
         super()
 
@@ -36,6 +45,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.fadeOut = fadeOut
         this.width = width
         this.height = height
+        this.scroll = scroll
     }
 
     protected getInput(path: string, inputIndex: number, fps: number): FFmpegInput {
@@ -92,6 +102,53 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             })
 
             currentVideoOutput = scaleOutput
+        }
+
+        if (this.scroll) {
+            const cropOutput = `crop${context.inputIndex}`
+
+            const duration = this.duration
+            const direction = this.scroll.direction ?? "down"
+            const easing = this.scroll.easing ?? "linear"
+
+            let yExpr = ""
+
+            const delta = `(ih-${this.height})`
+
+            switch (easing) {
+                case "easeIn":
+                    yExpr = `${delta}*(t/${duration})*(t/${duration})`
+                    break
+
+                case "easeOut":
+                    yExpr = `${delta}*(1-(1-t/${duration})*(1-t/${duration}))`
+                    break
+
+                case "easeInOut":
+                    yExpr = `${delta}*(1-cos(PI*t/${duration}))/2`
+                    break
+
+                default:
+                    yExpr = `${delta}*(t/${duration})`
+            }
+
+            if (direction === "up") {
+                yExpr = `${delta}-(${yExpr})`
+            }
+
+            context.filters.push({
+                filter: "crop",
+                options: {
+                    w: this.width ?? "iw",
+                    h: this.height ?? "ih",
+                    x: 0,
+                    y: yExpr
+                },
+                inputs: currentVideoOutput,
+                outputs: cropOutput
+            })
+
+            currentVideoOutput = cropOutput
         }
 
         if (this.fadeIn && this.fadeIn > 0) {
