@@ -2,7 +2,7 @@ import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
-import { getEasedExpression } from "../utils/get-eased-expression"
+import { easingExpr } from "../utils/easing-expr"
 
 export type ImageClipOptions<RenderData> = {
     path: Path<RenderData>
@@ -23,8 +23,8 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
     readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
-    readonly width?: number
-    readonly height?: number
+    readonly width: number
+    readonly height: number
     readonly scroll?: {
         axis?: "auto" | "x" | "y"
         direction?: "forward" | "backward"
@@ -46,8 +46,8 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.path = path
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
-        this.width = width
-        this.height = height
+        this.width = width || -1
+        this.height = height || -1
         this.scroll = scroll
     }
 
@@ -94,49 +94,80 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             outputs: currentAudioOutput,
         })
 
-        if (this.width !== undefined || this.height !== undefined) {
+        const hasCanvas = this.width !== -1 || this.height !== -1
+
+        if (this.scroll) {
+            const {
+                axis = "auto",
+                direction = "forward",
+                easing = "linear",
+            } = this.scroll
+
+            const cropOutput = `scroll${context.inputIndex}`
+
+            const tNorm = `t/${this.duration}`
+            const eased = easingExpr(easing, tNorm)
+            const dir = direction === "backward" ? `1-${eased}` : eased
+
+            let cropOptions: any
+
+            if (axis === "y" || axis === "auto") {
+                cropOptions = {
+                    w: this.width,
+                    h: this.height,
+                    x: 0,
+                    y: `(ih-oh)*${dir}`,
+                }
+            }
+
+            if (axis === "x") {
+                cropOptions = {
+                    w: this.width,
+                    h: this.height,
+                    x: `(iw-ow)*${dir}`,
+                    y: 0,
+                }
+            }
+
+            context.filters.push({
+                filter: "crop",
+                options: cropOptions,
+                inputs: currentVideoOutput,
+                outputs: cropOutput,
+            })
+
+            currentVideoOutput = cropOutput
+        }
+
+        if (hasCanvas) {
             const scaleOutput = `scale${context.inputIndex}`
 
             context.filters.push({
                 filter: "scale",
-                options: { w: this.width ?? -1, h: this.height ?? -1 },
+                options: {
+                    w: this.width,
+                    h: this.height,
+                    force_original_aspect_ratio: "increase",
+                },
                 inputs: currentVideoOutput,
                 outputs: scaleOutput,
             })
 
-            currentVideoOutput = scaleOutput
-        }
-
-        if (this.scroll) {
-            const cropOutput = `crop${context.inputIndex}`
-            const easing = this.scroll.easing ?? "linear"
-
-            const totalFrames = this.duration * context.fps
-            const p = getEasedExpression(`min(n/${totalFrames},1)`, easing)
-
-            const xExpr =
-                this.scroll.axis === "x" && this.width
-                    ? `if(gt(iw,${this.width}),min((iw-${this.width})*(${p}),iw-${this.width}),0)`
-                    : "0"
-
-            const yExpr =
-                this.scroll.axis === "y" && this.height
-                    ? `if(gt(ih,${this.height}),min((ih-${this.height})*(${p}),ih-${this.height}),0)`
-                    : "0"
+            const fitOutput = `fit${context.inputIndex}`
 
             context.filters.push({
                 filter: "crop",
                 options: {
-                    w: this.width ?? "iw",
-                    h: this.height ?? "ih",
-                    x: xExpr,
-                    y: yExpr
+                    w: this.width,
+                    h: this.height,
+                    x: "(iw-ow)/2",
+                    y: "(ih-oh)/2",
                 },
-                inputs: currentVideoOutput,
-                outputs: cropOutput
+                inputs: scaleOutput,
+                outputs: fitOutput,
             })
 
-            currentVideoOutput = cropOutput
+            currentVideoOutput = fitOutput
         }
 
         if (this.fadeIn && this.fadeIn > 0) {
