@@ -109,28 +109,28 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
         if (this.scroll) {
             const cropOutput = `crop${context.inputIndex}`
-            const duration = this.duration
             const easing = this.scroll.easing ?? "linear"
 
-            const p = getEasedExpression(`t/${duration}`, easing)
+            const totalFrames = this.duration * context.fps
+            const p = getEasedExpression(`min(n/${totalFrames},1)`, easing)
+
+            const xExpr =
+                this.scroll.axis === "x" && this.width
+                    ? `if(gt(iw,${this.width}),min((iw-${this.width})*(${p}),iw-${this.width}),0)`
+                    : "0"
+
+            const yExpr =
+                this.scroll.axis === "y" && this.height
+                    ? `if(gt(ih,${this.height}),min((ih-${this.height})*(${p}),ih-${this.height}),0)`
+                    : "0"
 
             context.filters.push({
                 filter: "crop",
                 options: {
                     w: this.width ?? "iw",
                     h: this.height ?? "ih",
-                    x: `
-                if(gt(iw,${this.width}),
-                   max(iw-${this.width},0)*${p},
-                   0
-                )
-            `,
-                    y: `
-                if(gt(ih,${this.height}),
-                   max(ih-${this.height},0)*${p},
-                   0
-                )
-            `
+                    x: xExpr,
+                    y: yExpr
                 },
                 inputs: currentVideoOutput,
                 outputs: cropOutput
