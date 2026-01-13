@@ -16,7 +16,7 @@ export type TemplateOptions<RenderData> = {
 }
 
 export class Template<RenderData> {
-    constructor(private readonly options: TemplateOptions<RenderData>) { }
+    constructor(private readonly options: TemplateOptions<RenderData>) {}
 
     async render(data: RenderData) {
         const command = ffmpeg()
@@ -69,19 +69,6 @@ export class Template<RenderData> {
             mixFilter,
             finalAudioFilter
         ].filter((filter) => filter !== null)
-
-        // console.dir({
-        //     concatFilter,
-        //     finalAudioFilter,
-        //     mixFilter,
-        //     filterComplex,
-        //     context: {
-        //         ...context,
-        //         command: "<command>"
-        //     }
-        // }, {
-        //     depth: null
-        // })
 
         command.complexFilter(filterComplex)
 
