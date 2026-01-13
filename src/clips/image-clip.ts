@@ -96,50 +96,38 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
         const hasCanvas = this.width !== -1 || this.height !== -1
 
-        if (this.scroll) {
-            const {
-                axis = "auto",
-                direction = "forward",
-                easing = "linear",
-            } = this.scroll
+        if (hasCanvas && this.scroll) {
+            const scaleOutput = `scale${context.inputIndex}`
 
-            const cropOutput = `scroll${context.inputIndex}`
+            const { axis = "auto" } = this.scroll
 
-            const tNorm = `t/${this.duration}`
-            const eased = easingExpr(easing, tNorm)
-            const dir = direction === "backward" ? `1-${eased}` : eased
-
-            let cropOptions: any
+            let scaleOptions: Record<string, string | number> | null = null
 
             if (axis === "y" || axis === "auto") {
-                cropOptions = {
+                scaleOptions = {
                     w: this.width,
+                    h: -1,
+                }
+            } else if (axis === "x") {
+                scaleOptions = {
+                    w: -1,
                     h: this.height,
-                    x: 0,
-                    y: `(ih-oh)*${dir}`,
                 }
             }
 
-            if (axis === "x") {
-                cropOptions = {
-                    w: this.width,
-                    h: this.height,
-                    x: `(iw-ow)*${dir}`,
-                    y: 0,
-                }
+            if (!scaleOptions) {
+                throw new Error("Invalid scale options")
             }
 
             context.filters.push({
-                filter: "crop",
-                options: cropOptions,
+                filter: "scale",
+                options: scaleOptions,
                 inputs: currentVideoOutput,
-                outputs: cropOutput,
+                outputs: scaleOutput,
             })
 
-            currentVideoOutput = cropOutput
-        }
-
-        if (hasCanvas) {
+            currentVideoOutput = scaleOutput
+        } else if (hasCanvas && !this.scroll) {
             const scaleOutput = `scale${context.inputIndex}`
 
             context.filters.push({
@@ -168,6 +156,53 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             })
 
             currentVideoOutput = fitOutput
+        }
+
+        if (this.scroll) {
+            const {
+                axis = "auto",
+                direction = "forward",
+                easing = "linear",
+            } = this.scroll
+
+            const cropOutput = `scroll${context.inputIndex}`
+
+            const tNorm = `t/${this.duration}`
+            const eased = easingExpr(easing, tNorm)
+            const movement = direction === "backward" ? `1-(${eased})` : eased
+
+            let cropOptions: Record<string, string | number> | null = null
+
+            if (axis === "y" || axis === "auto") {
+                cropOptions = {
+                    w: this.width,
+                    h: this.height,
+                    x: 0,
+                    y: `(ih-oh)*(${movement})`,
+                }
+            }
+
+            if (axis === "x") {
+                cropOptions = {
+                    w: this.width,
+                    h: this.height,
+                    x: `(iw-ow)*(${movement})`,
+                    y: 0,
+                }
+            }
+
+            if (!cropOptions) {
+                throw new Error("Invalid crop options")
+            }
+
+            context.filters.push({
+                filter: "crop",
+                options: cropOptions,
+                inputs: currentVideoOutput,
+                outputs: cropOutput,
+            })
+
+            currentVideoOutput = cropOutput
         }
 
         if (this.fadeIn && this.fadeIn > 0) {
