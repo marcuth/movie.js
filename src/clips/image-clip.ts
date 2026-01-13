@@ -1,8 +1,10 @@
+import ffmpeg, { ffprobe } from "fluent-ffmpeg"
+
 import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
-import { Clip } from "./clip"
 import { easingExpr } from "../utils/easing-expr"
+import { Clip } from "./clip"
 
 export type ImageClipOptions<RenderData> = {
     path: Path<RenderData>
@@ -69,11 +71,19 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
     }
 
-    build(data: RenderData, context: RenderContext): void {
+    protected getMetadata(path: string): Promise<ffmpeg.FfprobeData> {
+        return new Promise((resolve, reject) => {
+            ffprobe(path, (err, data) => err ? reject(err) : resolve(data))
+        })
+    }
+
+    async build(data: RenderData, context: RenderContext): Promise<void> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
         const input = this.getInput(path, context.inputIndex, context.fps)
         let currentVideoOutput = input.aliases.video
         const currentAudioOutput = input.aliases.audio
+
+        const metadata = await this.getMetadata(path)
 
         context.command
             .input(input.path)
@@ -99,11 +109,15 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         if (hasCanvas && this.scroll) {
             const scaleOutput = `scale${context.inputIndex}`
 
-            const { axis = "auto" } = this.scroll
+            let { axis = "auto" } = this.scroll
 
             let scaleOptions: Record<string, string | number> | null = null
 
-            if (axis === "y" || axis === "auto") {
+            if (axis === "auto") {
+                axis = metadata.format.width > metadata.format.height ? "x" : "y"
+            }
+
+            if (axis === "y") {
                 scaleOptions = {
                     w: this.width,
                     h: -1,
@@ -116,7 +130,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             }
 
             if (!scaleOptions) {
-                throw new Error("Invalid scale options")
+                throw new Error("Invalid scroll axis")
             }
 
             context.filters.push({
@@ -126,7 +140,16 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
                 outputs: scaleOutput,
             })
 
-            currentVideoOutput = scaleOutput
+            const setsarOutput = `setsar${context.inputIndex}`
+
+            context.filters.push({
+                filter: "setsar",
+                options: { sar: "1/1" },
+                inputs: scaleOutput,
+                outputs: setsarOutput,
+            })
+
+            currentVideoOutput = setsarOutput
         } else if (hasCanvas && !this.scroll) {
             const scaleOutput = `scale${context.inputIndex}`
 
