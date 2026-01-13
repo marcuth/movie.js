@@ -2,6 +2,7 @@ import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
+import { getEasedExpression } from "../utils/get-eased-expression"
 
 export type ImageClipOptions<RenderData> = {
     path: Path<RenderData>
@@ -11,7 +12,8 @@ export type ImageClipOptions<RenderData> = {
     fadeIn?: number
     fadeOut?: number
     scroll?: {
-        direction?: "up" | "down"
+        axis?: "auto" | "x" | "y"
+        direction?: "forward" | "backward"
         easing?: "linear" | "easeIn" | "easeOut" | "easeInOut"
     }
 }
@@ -24,7 +26,8 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
     readonly width?: number
     readonly height?: number
     readonly scroll?: {
-        direction?: "up" | "down"
+        axis?: "auto" | "x" | "y"
+        direction?: "forward" | "backward"
         easing?: "linear" | "easeIn" | "easeOut" | "easeInOut"
     }
 
@@ -106,43 +109,28 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
         if (this.scroll) {
             const cropOutput = `crop${context.inputIndex}`
-
             const duration = this.duration
-            const direction = this.scroll.direction ?? "down"
             const easing = this.scroll.easing ?? "linear"
 
-            let yExpr = ""
-
-            const delta = `(ih-${this.height})`
-
-            switch (easing) {
-                case "easeIn":
-                    yExpr = `${delta}*(t/${duration})*(t/${duration})`
-                    break
-
-                case "easeOut":
-                    yExpr = `${delta}*(1-(1-t/${duration})*(1-t/${duration}))`
-                    break
-
-                case "easeInOut":
-                    yExpr = `${delta}*(1-cos(PI*t/${duration}))/2`
-                    break
-
-                default:
-                    yExpr = `${delta}*(t/${duration})`
-            }
-
-            if (direction === "up") {
-                yExpr = `${delta}-(${yExpr})`
-            }
+            const p = getEasedExpression(`t/${duration}`, easing)
 
             context.filters.push({
                 filter: "crop",
                 options: {
                     w: this.width ?? "iw",
                     h: this.height ?? "ih",
-                    x: 0,
-                    y: yExpr
+                    x: `
+                if(gt(iw,${this.width}),
+                   max(iw-${this.width},0)*${p},
+                   0
+                )
+            `,
+                    y: `
+                if(gt(ih,${this.height}),
+                   max(ih-${this.height},0)*${p},
+                   0
+                )
+            `
                 },
                 inputs: currentVideoOutput,
                 outputs: cropOutput
