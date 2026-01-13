@@ -34,16 +34,16 @@ export class Template<RenderData> {
             },
         }
 
-        // if (this.options.debug) {
-        //     command
-        //         .on("start", (commandLine) => {
-        //             console.log("Spawned Ffmpeg with command: " + commandLine)
-        //         })
-        //         .on("error", (err, stdout, stderr) => {
-        //             console.error("Error: " + err.message)
-        //             console.error("ffmpeg stderr: " + stderr)
-        //         })
-        // }
+        if (this.options.debug) {
+            command
+                .on("start", (commandLine) => {
+                    console.log("Spawned Ffmpeg with command: " + commandLine)
+                })
+                .on("error", (err, stdout, stderr) => {
+                    console.error("Error: " + err.message)
+                    console.error("ffmpeg stderr: " + stderr)
+                })
+        }
 
         await this.runBuildWithProgress(data, context)
 
