@@ -9,18 +9,21 @@ export type VideoClipOptions<RenderData> = {
     path: Path<RenderData>
     fadeIn?: number
     fadeOut?: number
+    subClip?: [number, number]
 }
 
 export class VideoClip<RenderData> extends Clip<RenderData> {
     readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
+    readonly subClip?: [number, number]
 
-    constructor({ path, fadeIn, fadeOut }: VideoClipOptions<RenderData>) {
+    constructor({ path, fadeIn, fadeOut, subClip }: VideoClipOptions<RenderData>) {
         super()
         this.path = path
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
+        this.subClip = subClip
     }
 
     protected getInput(path: string, inputIndex: number): FFmpegInput {
@@ -52,9 +55,15 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         const input = this.getInput(path, context.inputIndex)
         let currentVideoOutput = input.aliases.video
         let currentAudioOutput = input.aliases.audio
-        const duration = await this.getDuration(path)
-        
+        let duration = await this.getDuration(path)
+
         context.command.input(path)
+
+        if (this.subClip) {
+            const [start, subDuration] = this.subClip
+            context.command.inputOptions([`-ss ${start}`, `-t ${subDuration}`])
+            duration = subDuration
+        }
 
         if (this.fadeIn !== undefined && this.fadeIn > 0) {
             const fadeInOutput = `[fadeIn${context.inputIndex}]`
