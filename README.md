@@ -107,6 +107,25 @@ movie.audio({
 })
 ```
 
+#### TextClip
+
+To create a simple text-on-color clip:
+
+```ts
+movie.text({
+    text: ({ data }) => data.title,
+    duration: 3,
+    backgroundColor: "#000000",
+    fontColor: "white",
+    fontSize: 72,
+    // x and y accept ffmpeg expressions
+    x: "(w-text_w)/2", // default: centered
+    y: "(h-text_h)/2", // default: centered
+    fadeIn: 0.5,
+    fadeOut: 0.5
+})
+```
+
 ---
 
 ### Structural Clips
