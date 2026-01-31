@@ -1,22 +1,25 @@
 import { ffprobe } from "fluent-ffmpeg"
 
+import { Property, resolveProperty } from "../utils/resolve-property"
 import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
 
+export type SubClip<RenderData> = Property<RenderData, [number, number]>
+
 export type VideoClipOptions<RenderData> = {
     path: Path<RenderData>
     fadeIn?: number
     fadeOut?: number
-    subClip?: [number, number]
+    subClip?: SubClip<RenderData>
 }
 
 export class VideoClip<RenderData> extends Clip<RenderData> {
     readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
-    readonly subClip?: [number, number]
+    readonly subClip?: SubClip<RenderData>
 
     constructor({ path, fadeIn, fadeOut, subClip }: VideoClipOptions<RenderData>) {
         super()
@@ -60,7 +63,8 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         context.command.input(path)
 
         if (this.subClip) {
-            const [start, subDuration] = this.subClip
+            const subClip = resolveProperty({ property: this.subClip, data, index: context.clipIndex })
+            const [start, subDuration] = subClip
             context.command.inputOptions([`-ss ${start}`, `-t ${subDuration}`])
             duration = subDuration
         }
