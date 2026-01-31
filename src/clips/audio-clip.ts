@@ -1,6 +1,7 @@
 import ffmpeg from "fluent-ffmpeg"
 
 import { Path, resolvePath } from "../utils/resolve-path"
+import { Property, resolveProperty } from "../utils/resolve-property"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
@@ -9,7 +10,7 @@ export type AudioClipOptions<RenderData> = {
     path: Path<RenderData>
     volume?: number
     loop?: boolean
-    subClip?: [number, number]
+    subClip?: Property<RenderData, [number, number]>
     fadeIn?: number
     fadeOut?: number
 }
@@ -18,7 +19,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
     readonly path: Path<RenderData>
     readonly volume?: number
     readonly loop?: boolean
-    readonly subClip?: [number, number]
+    readonly subClip?: Property<RenderData, [number, number]>
     readonly fadeIn?: number
     readonly fadeOut?: number
 
@@ -40,15 +41,15 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         this.fadeOut = fadeOut
     }
 
-    protected getInput(path: string, inputIndex: number): FFmpegInput {
+    protected getAudioInput(path: string, inputIndex: number, subClip?: [number, number]): FFmpegInput {
         const inputOptions: string[] = []
 
         if (this.loop) {
             inputOptions.push("-stream_loop", "-1")
         }
 
-        if (this.subClip) {
-            const [start, end] = this.subClip
+        if (subClip) {
+            const [start, end] = subClip
             inputOptions.push("-ss", `${start}`)
             inputOptions.push("-to", `${end}`)
         }
@@ -78,7 +79,9 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
-        const input = this.getInput(path, context.inputIndex)
+        const subClip = this.subClip ? resolveProperty({ property: this.subClip, data, index: context.clipIndex }) : undefined
+
+        const input = this.getAudioInput(path, context.inputIndex, subClip)
 
         context.command.input(input.path)
 
@@ -88,8 +91,8 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
 
         let duration = await this.getDuration(path)
 
-        if (this.subClip) {
-            const [start, end] = this.subClip
+        if (subClip) {
+            const [start, end] = subClip
             duration = Math.max(end - start, 0)
         }
 

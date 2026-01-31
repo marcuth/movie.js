@@ -1,6 +1,7 @@
 import ffmpeg, { ffprobe } from "fluent-ffmpeg"
 
 import { Path, resolvePath } from "../utils/resolve-path"
+import { Property, resolveProperty } from "../utils/resolve-property"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { easingExpr } from "../utils/easing-expr"
@@ -10,7 +11,7 @@ export type ImageClipOptions<RenderData> = {
     path: Path<RenderData>
     width?: number
     height?: number
-    duration: number
+    duration: Property<RenderData, number>
     fadeIn?: number
     fadeOut?: number
     scroll?: {
@@ -21,7 +22,7 @@ export type ImageClipOptions<RenderData> = {
 }
 
 export class ImageClip<RenderData> extends Clip<RenderData> {
-    readonly duration: number
+    readonly duration: Property<RenderData, number>
     readonly path: Path<RenderData>
     readonly fadeIn?: number
     readonly fadeOut?: number
@@ -53,7 +54,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         this.scroll = scroll
     }
 
-    protected getInput(path: string, inputIndex: number, fps: number): FFmpegInput {
+    protected getImageInput(path: string, inputIndex: number, fps: number, duration: number): FFmpegInput {
         return {
             path: path,
             index: Number(inputIndex),
@@ -64,7 +65,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             type: "image" as const,
             options: [
                 "-loop 1",
-                `-t ${this.duration}`,
+                `-t ${duration}`,
                 `-framerate ${fps}`
             ]
         }
@@ -79,7 +80,9 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
     async build(data: RenderData, context: RenderContext): Promise<void> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
-        const input = this.getInput(path, context.inputIndex, context.fps)
+        const duration = resolveProperty({ property: this.duration, data, index: context.clipIndex })
+
+        const input = this.getImageInput(path, context.inputIndex, context.fps, duration)
         let currentVideoOutput = input.aliases.video
         const currentAudioOutput = input.aliases.audio
 
@@ -99,7 +102,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
         context.filters.push({
             filter: "atrim",
-            options: { end: this.duration },
+            options: { end: duration },
             inputs: anullSrcLabel,
             outputs: currentAudioOutput,
         })
@@ -190,7 +193,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
             const cropOutput = `scroll${context.inputIndex}`
 
-            const tNorm = `t/${this.duration}`
+            const tNorm = `t/${duration}`
             const eased = easingExpr(easing, tNorm)
             const movement = direction === "backward" ? `1-(${eased})` : eased
 
@@ -242,7 +245,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         }
 
         if (this.fadeOut && this.fadeOut > 0) {
-            const start = Math.max(this.duration - this.fadeOut, 0)
+            const start = Math.max(duration - this.fadeOut, 0)
             const fadeOutOutput = `[v${context.inputIndex}]`
 
             context.filters.push({
