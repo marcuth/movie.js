@@ -48,7 +48,7 @@ const result = await template.render({
 })
 
 // Save the result
-result.save("output.mp4")
+await result.toFile("output.mp4")
 ```
 
 ---
