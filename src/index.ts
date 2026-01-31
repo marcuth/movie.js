@@ -1,4 +1,4 @@
-import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, RepeatClip, RepeatClipOptions, VideoClip, ConcatenationClip, ConcatenationClipOptions } from "./clips"
+import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, RepeatClip, RepeatClipOptions, VideoClip, ConcatenationClip, ConcatenationClipOptions, TextClip, TextClipOptions } from "./clips"
 import { Template, TemplateOptions } from "./template"
 
 export * from "./clips"
@@ -25,6 +25,9 @@ const movie = {
     },
     concatenation<RenderData>(options: ConcatenationClipOptions<RenderData>) {
         return new ConcatenationClip<RenderData>(options)
+    },
+    text<RenderData>(options: TextClipOptions<RenderData>) {
+        return new TextClip<RenderData>(options)
     }
 }
 
