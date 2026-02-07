@@ -1,7 +1,7 @@
 import ffmpeg from "fluent-ffmpeg"
 
-import { Path, resolvePath } from "../utils/resolve-path"
 import { Property, resolveProperty } from "../utils/resolve-property"
+import { Path, resolvePath } from "../utils/resolve-path"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
 import { Clip } from "./clip"
@@ -23,14 +23,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
     readonly fadeIn?: number
     readonly fadeOut?: number
 
-    constructor({
-        path,
-        volume,
-        loop,
-        subClip,
-        fadeIn,
-        fadeOut,
-    }: AudioClipOptions<RenderData>) {
+    constructor({ path, volume, loop, subClip, fadeIn, fadeOut }: AudioClipOptions<RenderData>) {
         super()
 
         this.path = path
@@ -61,14 +54,14 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
             },
             type: "audio",
             options: inputOptions,
-            index: inputIndex
+            index: inputIndex,
         }
     }
 
     async getDuration(path: string): Promise<number> {
         try {
             const metadata = await new Promise<ffmpeg.FfprobeData>((resolve, reject) => {
-                ffmpeg.ffprobe(path, (err, data) => err ? reject(err) : resolve(data))
+                ffmpeg.ffprobe(path, (err, data) => (err ? reject(err) : resolve(data)))
             })
 
             return Math.floor(metadata?.format?.duration ?? 0)
@@ -77,9 +70,11 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         }
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
-        const subClip = this.subClip ? resolveProperty({ property: this.subClip, data, index: context.clipIndex }) : undefined
+        const subClip = this.subClip
+            ? resolveProperty({ property: this.subClip, data, index: context.clipIndex })
+            : undefined
 
         const input = this.getAudioInput(path, context.inputIndex, subClip)
 
@@ -118,7 +113,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
                 filter: "afade",
                 options: { t: "in", st: 0, d: this.fadeIn },
                 inputs: currentAudioOutput,
-                outputs: fadeInOutput
+                outputs: fadeInOutput,
             })
 
             currentAudioOutput = fadeInOutput
@@ -132,10 +127,10 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
                     filter: "afade",
                     options: {
                         t: "out",
-                        d: this.fadeOut
+                        d: this.fadeOut,
                     },
                     inputs: currentAudioOutput,
-                    outputs: fadeOutOutput
+                    outputs: fadeOutOutput,
                 })
             } else {
                 const start = Math.max((duration || 0) - this.fadeOut, 0)
@@ -145,10 +140,10 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
                     options: {
                         t: "out",
                         st: start,
-                        d: this.fadeOut
+                        d: this.fadeOut,
                     },
                     inputs: currentAudioOutput,
-                    outputs: fadeOutOutput
+                    outputs: fadeOutOutput,
                 })
             }
 
@@ -162,7 +157,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
                 filter: "volume",
                 options: `${this.volume}`,
                 inputs: currentAudioOutput,
-                outputs: volumeOutput
+                outputs: volumeOutput,
             })
 
             currentAudioOutput = volumeOutput
@@ -171,5 +166,7 @@ export class AudioClip<RenderData> extends Clip<RenderData> {
         context.labels.mixAudio.push(currentAudioOutput)
 
         context.inputIndex++
+
+        return 0
     }
 }

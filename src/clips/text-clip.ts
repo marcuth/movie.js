@@ -44,7 +44,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
         x = "(w-text_w)/2",
         y = "(h-text_h)/2",
         fadeIn,
-        fadeOut
+        fadeOut,
     }: TextClipOptions<RenderData>) {
         super()
         this.text = text
@@ -67,14 +67,14 @@ export class TextClip<RenderData> extends Clip<RenderData> {
             index: inputIndex,
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[a${inputIndex}]`
+                audio: `[a${inputIndex}]`,
             },
             type: "video",
-            options: ["-f lavfi"]
+            options: ["-f lavfi"],
         }
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const text = resolveProperty({ property: this.text, data, index: context.clipIndex })
         const duration = resolveProperty({ property: this.duration, data, index: context.clipIndex })
 
@@ -82,9 +82,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
         let currentVideoOutput = input.aliases.video
         const currentAudioOutput = input.aliases.audio
 
-        context.command
-            .input(input.path)
-            .inputOptions(input.options!)
+        context.command.input(input.path).inputOptions(input.options!)
 
         const drawTextOutput = `drawtext${context.inputIndex}`
         const drawTextOptions: Record<string, string | number> = {
@@ -92,7 +90,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
             fontsize: this.fontSize,
             fontcolor: this.fontColor,
             x: this.x,
-            y: this.y
+            y: this.y,
         }
 
         if (this.fontPath) {
@@ -103,7 +101,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
             filter: "drawtext",
             options: drawTextOptions,
             inputs: currentVideoOutput,
-            outputs: drawTextOutput
+            outputs: drawTextOutput,
         })
 
         currentVideoOutput = drawTextOutput
@@ -130,7 +128,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "in", st: 0, d: this.fadeIn },
                 inputs: currentVideoOutput,
-                outputs: fadeInOutput
+                outputs: fadeInOutput,
             })
 
             currentVideoOutput = fadeInOutput
@@ -144,7 +142,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "out", st: start, d: this.fadeOut },
                 inputs: currentVideoOutput,
-                outputs: fadeOutOutput
+                outputs: fadeOutOutput,
             })
 
             currentVideoOutput = fadeOutOutput
@@ -152,7 +150,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "null",
                 inputs: currentVideoOutput,
-                outputs: `[v${context.inputIndex}]`
+                outputs: `[v${context.inputIndex}]`,
             })
         }
 
@@ -160,5 +158,7 @@ export class TextClip<RenderData> extends Clip<RenderData> {
         context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
+
+        return duration
     }
 }

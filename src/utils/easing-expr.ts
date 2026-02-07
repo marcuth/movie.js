@@ -1,7 +1,4 @@
-export function easingExpr(
-    easing: "linear" | "easeIn" | "easeOut" | "easeInOut",
-    t: string
-) {
+export function easingExpr(easing: "linear" | "easeIn" | "easeOut" | "easeInOut", t: string) {
     switch (easing) {
         case "linear":
             return `(${t})`

@@ -13,6 +13,13 @@ export type VideoClipOptions<RenderData> = {
     fadeIn?: number
     fadeOut?: number
     subClip?: SubClip<RenderData>
+    chromaKey?: {
+        color: string
+        similarity?: number
+        blend?: number
+    }
+    width?: number
+    height?: number
 }
 
 export class VideoClip<RenderData> extends Clip<RenderData> {
@@ -20,13 +27,23 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
     readonly fadeIn?: number
     readonly fadeOut?: number
     readonly subClip?: SubClip<RenderData>
+    readonly chromaKey?: {
+        color: string
+        similarity?: number
+        blend?: number
+    }
+    readonly width?: number
+    readonly height?: number
 
-    constructor({ path, fadeIn, fadeOut, subClip }: VideoClipOptions<RenderData>) {
+    constructor({ path, fadeIn, fadeOut, subClip, chromaKey, width, height }: VideoClipOptions<RenderData>) {
         super()
         this.path = path
         this.fadeIn = fadeIn
         this.fadeOut = fadeOut
         this.subClip = subClip
+        this.chromaKey = chromaKey
+        this.width = width
+        this.height = height
     }
 
     protected getInput(path: string, inputIndex: number): FFmpegInput {
@@ -34,7 +51,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
             path: path,
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[${inputIndex}:a]`
+                audio: `[${inputIndex}:a]`,
             },
             type: "video",
             index: inputIndex,
@@ -53,7 +70,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         })
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
         const input = this.getInput(path, context.inputIndex)
         let currentVideoOutput = input.aliases.video
@@ -69,6 +86,33 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
             duration = subDuration
         }
 
+        if (this.width || this.height) {
+            const scaleOutput = `[scale${context.inputIndex}]`
+
+            context.filters.push({
+                filter: "scale",
+                options: { width: this.width, height: this.height },
+                inputs: currentVideoOutput,
+                outputs: scaleOutput,
+            })
+
+            currentVideoOutput = scaleOutput
+        }
+
+        if (this.chromaKey) {
+            const { color, similarity = 0.01, blend = 0.0 } = this.chromaKey
+            const chromaKeyOutput = `[chromakey${context.inputIndex}]`
+
+            context.filters.push({
+                filter: "chromakey",
+                options: { color, similarity, blend },
+                inputs: currentVideoOutput,
+                outputs: chromaKeyOutput,
+            })
+
+            currentVideoOutput = chromaKeyOutput
+        }
+
         if (this.fadeIn !== undefined && this.fadeIn > 0) {
             const fadeInOutput = `[fadeIn${context.inputIndex}]`
             const fadeInAudioOutput = `[fadeInAudio${context.inputIndex}]`
@@ -77,14 +121,14 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "in", st: 0, d: this.fadeIn },
                 inputs: currentVideoOutput,
-                outputs: fadeInOutput
+                outputs: fadeInOutput,
             })
 
             context.filters.push({
                 filter: "afade",
                 options: { t: "in", st: 0, d: this.fadeIn },
                 inputs: currentAudioOutput,
-                outputs: fadeInAudioOutput
+                outputs: fadeInAudioOutput,
             })
 
             currentVideoOutput = fadeInOutput
@@ -100,14 +144,14 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "out", st: start, d: this.fadeOut },
                 inputs: currentVideoOutput,
-                outputs: fadeOutOutput
+                outputs: fadeOutOutput,
             })
 
             context.filters.push({
                 filter: "afade",
                 options: { t: "out", st: start, d: this.fadeOut },
                 inputs: currentAudioOutput,
-                outputs: fadeOutAudioOutput
+                outputs: fadeOutAudioOutput,
             })
 
             currentVideoOutput = fadeOutOutput
@@ -116,7 +160,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "null",
                 inputs: currentVideoOutput,
-                outputs: `[v${context.inputIndex}]`
+                outputs: `[v${context.inputIndex}]`,
             })
         }
 
@@ -124,5 +168,7 @@ export class VideoClip<RenderData> extends Clip<RenderData> {
         context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
+
+        return duration
     }
 }

@@ -1,10 +1,10 @@
 import ffmpeg, { ffprobe } from "fluent-ffmpeg"
 
-import { Path, resolvePath } from "../utils/resolve-path"
 import { Property, resolveProperty } from "../utils/resolve-property"
+import { Path, resolvePath } from "../utils/resolve-path"
+import { easingExpr } from "../utils/easing-expr"
 import { RenderContext } from "../render-context"
 import { FFmpegInput } from "../ffmpeg-input"
-import { easingExpr } from "../utils/easing-expr"
 import { Clip } from "./clip"
 
 export type ImageClipOptions<RenderData> = {
@@ -34,15 +34,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         easing?: "linear" | "easeIn" | "easeOut" | "easeInOut"
     }
 
-    constructor({
-        duration,
-        path,
-        width,
-        height,
-        fadeIn,
-        fadeOut,
-        scroll
-    }: ImageClipOptions<RenderData>) {
+    constructor({ duration, path, width, height, fadeIn, fadeOut, scroll }: ImageClipOptions<RenderData>) {
         super()
 
         this.duration = duration
@@ -60,25 +52,20 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             index: Number(inputIndex),
             aliases: {
                 video: `[${inputIndex}:v]`,
-                audio: `[a${inputIndex}]`
+                audio: `[a${inputIndex}]`,
             },
             type: "image" as const,
-            options: [
-                "-loop 1",
-                `-t ${duration}`,
-                `-framerate ${fps}`
-            ]
+            options: ["-loop 1", `-t ${duration}`, `-framerate ${fps}`],
         }
-
     }
 
     protected getMetadata(path: string): Promise<ffmpeg.FfprobeData> {
         return new Promise((resolve, reject) => {
-            ffprobe(path, (err, data) => err ? reject(err) : resolve(data))
+            ffprobe(path, (err, data) => (err ? reject(err) : resolve(data)))
         })
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const path = resolvePath({ path: this.path, data: data, index: context.clipIndex })
         const duration = resolveProperty({ property: this.duration, data, index: context.clipIndex })
 
@@ -88,9 +75,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
 
         const metadata = await this.getMetadata(path)
 
-        context.command
-            .input(input.path)
-            .inputOptions(input.options!)
+        context.command.input(input.path).inputOptions(input.options!)
 
         const anullSrcLabel = `[anull${context.inputIndex}]`
 
@@ -185,11 +170,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         }
 
         if (this.scroll) {
-            const {
-                axis = "auto",
-                direction = "forward",
-                easing = "linear",
-            } = this.scroll
+            const { axis = "auto", direction = "forward", easing = "linear" } = this.scroll
 
             const cropOutput = `scroll${context.inputIndex}`
 
@@ -238,7 +219,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "in", st: 0, d: this.fadeIn },
                 inputs: currentVideoOutput,
-                outputs: fadeInOutput
+                outputs: fadeInOutput,
             })
 
             currentVideoOutput = fadeInOutput
@@ -252,7 +233,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
                 filter: "fade",
                 options: { t: "out", st: start, d: this.fadeOut },
                 inputs: currentVideoOutput,
-                outputs: fadeOutOutput
+                outputs: fadeOutOutput,
             })
 
             currentVideoOutput = fadeOutOutput
@@ -262,7 +243,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "null",
                 inputs: currentVideoOutput,
-                outputs: `[v${context.inputIndex}]`
+                outputs: `[v${context.inputIndex}]`,
             })
         }
 
@@ -270,5 +251,7 @@ export class ImageClip<RenderData> extends Clip<RenderData> {
         context.labels.structuralAudio.push(currentAudioOutput)
 
         context.inputIndex++
+
+        return duration
     }
 }

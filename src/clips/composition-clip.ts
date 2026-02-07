@@ -18,13 +18,14 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
         this.clips = clips
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const startVideoIndex = context.labels.video.length
         const startAudioIndex = context.labels.structuralAudio.length
         const startMixAudioIndex = context.labels.mixAudio.length
 
+        let totalDuration = 0
         for (const clip of this.clips) {
-            await clip.build(data, context)
+            totalDuration += await clip.build(data, context)
         }
 
         const videoLabels = context.labels.video.slice(startVideoIndex)
@@ -33,7 +34,7 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
 
         if (videoLabels.length !== audioLabels.length) {
             throw new Error(
-                `CompositionClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`
+                `CompositionClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`,
             )
         }
 
@@ -46,10 +47,10 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
             options: {
                 n: videoLabels.length,
                 v: 1,
-                a: 1
+                a: 1,
             },
             inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
-            outputs: outV + outBaseA
+            outputs: outV + outBaseA,
         })
 
         if (mixAudioLabels.length > 0) {
@@ -58,26 +59,26 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
             context.filters.push({
                 filter: "amix",
                 options: {
-                    inputs: mixAudioLabels.length
+                    inputs: mixAudioLabels.length,
                 },
                 inputs: mixAudioLabels.join(""),
-                outputs: mixLabel
+                outputs: mixLabel,
             })
 
             context.filters.push({
                 filter: "amix",
                 options: {
                     inputs: 2,
-                    duration: "first"
+                    duration: "first",
                 },
                 inputs: `${outBaseA}${mixLabel}`,
-                outputs: outA
+                outputs: outA,
             })
         } else {
             context.filters.push({
                 filter: "anull",
                 inputs: outBaseA,
-                outputs: outA
+                outputs: outA,
             })
         }
 
@@ -87,5 +88,7 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
 
         context.labels.video.push(outV)
         context.labels.structuralAudio.push(outA)
+
+        return totalDuration
     }
 }

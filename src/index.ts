@@ -1,4 +1,21 @@
-import { AudioClip, AudioClipOptions, ImageClip, ImageClipOptions, VideoClipOptions, CompositionClip, CompositionClipOptions, RepeatClip, RepeatClipOptions, VideoClip, ConcatenationClip, ConcatenationClipOptions, TextClip, TextClipOptions } from "./clips"
+import {
+    AudioClip,
+    AudioClipOptions,
+    ImageClip,
+    ImageClipOptions,
+    VideoClipOptions,
+    CompositionClip,
+    CompositionClipOptions,
+    RepeatClip,
+    RepeatClipOptions,
+    VideoClip,
+    ConcatenationClip,
+    ConcatenationClipOptions,
+    TextClip,
+    TextClipOptions,
+    OverlayClip,
+    OverlayClipOptions,
+} from "./clips"
 import { Template, TemplateOptions } from "./template"
 
 export * from "./clips"
@@ -28,7 +45,10 @@ const movie = {
     },
     text<RenderData>(options: TextClipOptions<RenderData>) {
         return new TextClip<RenderData>(options)
-    }
+    },
+    overlay<RenderData>(options: OverlayClipOptions<RenderData>) {
+        return new OverlayClip<RenderData>(options)
+    },
 }
 
 export default movie

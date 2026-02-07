@@ -22,5 +22,5 @@ export abstract class Clip<RenderData> {
         throw new Error("Method not implemented.")
     }
 
-    abstract build(data: RenderData, context: RenderContext): void | Promise<void>
+    abstract build(data: RenderData, context: RenderContext): Promise<number>
 }

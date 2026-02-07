@@ -26,31 +26,34 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
     readonly each: EachFunction<RenderData, Item>
     readonly clip: ClipFunction<RenderData, Item>
 
-    constructor({
-        each,
-        clip,
-    }: RepeatClipOptions<RenderData, Item>) {
+    constructor({ each, clip }: RepeatClipOptions<RenderData, Item>) {
         super()
         this.each = each
         this.clip = clip
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const items = this.each({ data: data, index: 0 })
-        await this.runBuildWithProgress(items, data, context)
+        const totalDuration = await this.runBuildWithProgress(items, data, context)
+        return totalDuration
     }
 
-    private async runBuildWithProgress(items: Item[], data: RenderData, context: RenderContext) {
-        const buildBar = new cliProgress.SingleBar({ format: "Repeat Clip Build  |{bar}| {value}/{total} clips", hideCursor: true }, cliProgress.Presets.shades_classic)
+    private async runBuildWithProgress(items: Item[], data: RenderData, context: RenderContext): Promise<number> {
+        const buildBar = new cliProgress.SingleBar(
+            { format: "Repeat Clip Build  |{bar}| {value}/{total} clips", hideCursor: true },
+            cliProgress.Presets.shades_classic,
+        )
         buildBar.start(items.length, 0)
         const length = items.length
 
+        let totalDuration = 0
         for (let i = 0; i < length; i++) {
             const clip = this.clip(items[i], { index: i, length: length })
-            await clip.build(data, context)
+            totalDuration += await clip.build(data, context)
             buildBar.increment()
         }
 
         buildBar.stop()
+        return totalDuration
     }
 }

@@ -1,7 +1,10 @@
 import ffmpeg from "fluent-ffmpeg"
 
 export class RenderResult {
-    constructor(private readonly format: string, private readonly command: ffmpeg.FfmpegCommand) {}
+    constructor(
+        private readonly format: string,
+        private readonly command: ffmpeg.FfmpegCommand,
+    ) {}
 
     toStream() {
         return this.command.format(this.format).pipe()
@@ -12,7 +15,7 @@ export class RenderResult {
         const stream = this.toStream()
 
         return new Promise((resolve, reject) => {
-            stream.on("data", chunk => chunks.push(chunk))
+            stream.on("data", (chunk) => chunks.push(chunk))
             stream.on("end", () => resolve(Buffer.concat(chunks)))
             stream.on("error", reject)
         })

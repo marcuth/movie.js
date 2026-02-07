@@ -18,12 +18,13 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
         this.clips = clips
     }
 
-    async build(data: RenderData, context: RenderContext): Promise<void> {
+    async build(data: RenderData, context: RenderContext): Promise<number> {
         const startVideoIndex = context.labels.video.length
         const startAudioIndex = context.labels.structuralAudio.length
 
+        let totalDuration = 0
         for (const clip of this.clips) {
-            await clip.build(data, context)
+            totalDuration += await clip.build(data, context)
         }
 
         const videoLabels = context.labels.video.slice(startVideoIndex)
@@ -31,7 +32,7 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
 
         if (videoLabels.length !== audioLabels.length) {
             throw new Error(
-                `ConcatenationClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`
+                `ConcatenationClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`,
             )
         }
 
@@ -43,10 +44,10 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
             options: {
                 n: videoLabels.length,
                 v: 1,
-                a: 1
+                a: 1,
             },
             inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
-            outputs: outV + outA
+            outputs: outV + outA,
         })
 
         context.labels.video.splice(startVideoIndex)
@@ -54,5 +55,7 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
 
         context.labels.video.push(outV)
         context.labels.structuralAudio.push(outA)
+
+        return totalDuration
     }
 }
