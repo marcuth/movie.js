@@ -86,8 +86,6 @@ export class OverlayClip<RenderData> extends Clip<RenderData> {
         context.labels.video.push(outVideo)
         context.labels.structuralAudio.push(mixedAudio)
 
-        context.inputIndex++
-
         return baseDuration
     }
 }

@@ -42,16 +42,29 @@ export class CompositionClip<RenderData> extends Clip<RenderData> {
         const outBaseA = `[baseA${context.labels.structuralAudio.length}]`
         const outA = `[a${context.labels.structuralAudio.length}]`
 
-        context.filters.push({
-            filter: "concat",
-            options: {
-                n: videoLabels.length,
-                v: 1,
-                a: 1,
-            },
-            inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
-            outputs: outV + outBaseA,
-        })
+        if (videoLabels.length === 1) {
+            context.filters.push({
+                filter: "null",
+                inputs: videoLabels[0],
+                outputs: outV,
+            })
+            context.filters.push({
+                filter: "anull",
+                inputs: audioLabels[0],
+                outputs: outBaseA,
+            })
+        } else {
+            context.filters.push({
+                filter: "concat",
+                options: {
+                    n: videoLabels.length,
+                    v: 1,
+                    a: 1,
+                },
+                inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
+                outputs: outV + outBaseA,
+            })
+        }
 
         if (mixAudioLabels.length > 0) {
             const mixLabel = `[mix${context.labels.structuralAudio.length}]`

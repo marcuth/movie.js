@@ -46,6 +46,9 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
         buildBar.start(items.length, 0)
         const length = items.length
 
+        const startVideoIndex = context.labels.video.length
+        const startAudioIndex = context.labels.structuralAudio.length
+
         let totalDuration = 0
         for (let i = 0; i < length; i++) {
             const clip = this.clip(items[i], { index: i, length: length })
@@ -54,6 +57,38 @@ export class RepeatClip<RenderData, Item> extends Clip<RenderData> {
         }
 
         buildBar.stop()
+
+        const videoLabels = context.labels.video.slice(startVideoIndex)
+        const audioLabels = context.labels.structuralAudio.slice(startAudioIndex)
+
+        if (videoLabels.length !== audioLabels.length) {
+            throw new Error(
+                `RepeatClip: video/audio mismatch (${videoLabels.length} videos, ${audioLabels.length} audios)`,
+            )
+        }
+
+        if (videoLabels.length > 1) {
+            const outV = `[repeatV${context.inputIndex}]`
+            const outA = `[repeatA${context.inputIndex}]`
+
+            context.filters.push({
+                filter: "concat",
+                options: {
+                    n: videoLabels.length,
+                    v: 1,
+                    a: 1,
+                },
+                inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
+                outputs: outV + outA,
+            })
+
+            context.labels.video.splice(startVideoIndex)
+            context.labels.structuralAudio.splice(startAudioIndex)
+
+            context.labels.video.push(outV)
+            context.labels.structuralAudio.push(outA)
+        }
+
         return totalDuration
     }
 }

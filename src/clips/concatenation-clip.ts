@@ -39,16 +39,29 @@ export class ConcatenationClip<RenderData> extends Clip<RenderData> {
         const outV = `[v${context.labels.video.length}]`
         const outA = `[a${context.labels.structuralAudio.length}]`
 
-        context.filters.push({
-            filter: "concat",
-            options: {
-                n: videoLabels.length,
-                v: 1,
-                a: 1,
-            },
-            inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
-            outputs: outV + outA,
-        })
+        if (videoLabels.length === 1) {
+            context.filters.push({
+                filter: "null",
+                inputs: videoLabels[0],
+                outputs: outV,
+            })
+            context.filters.push({
+                filter: "anull",
+                inputs: audioLabels[0],
+                outputs: outA,
+            })
+        } else {
+            context.filters.push({
+                filter: "concat",
+                options: {
+                    n: videoLabels.length,
+                    v: 1,
+                    a: 1,
+                },
+                inputs: videoLabels.map((v, i) => `${v}${audioLabels[i]}`).join(""),
+                outputs: outV + outA,
+            })
+        }
 
         context.labels.video.splice(startVideoIndex)
         context.labels.structuralAudio.splice(startAudioIndex)

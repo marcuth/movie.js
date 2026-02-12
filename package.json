@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "format": "prettier --write \"src/**/*.ts\""
+    "format": "prettier --write \"src/**/*.ts\"",
+    "playground": "ts-node ./playground/index.ts"
   },
   "keywords": [
     "moviepy",
