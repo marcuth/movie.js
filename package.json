@@ -33,7 +33,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-sort-imports": "^1.8.10",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   },
   "dependencies": {
     "cli-progress": "^3.12.0",
