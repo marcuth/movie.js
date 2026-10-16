@@ -4,3 +4,4 @@ dist/
 *.png
 *.mp3
 playground/
+.agents
